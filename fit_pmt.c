@@ -12,6 +12,7 @@
 
 #include "Math/SpecFunc.h"
 #include "dataAnalyzer.c"
+#include <mysql/mysql.h>
 
 #include <TMinuit.h>
 #include <TApplication.h>
@@ -44,6 +45,7 @@ static const double twopi = 2 * 3.141592653589793;
 int fit_pmt(
 	// The first 3 parameters must be passed in
 	string rootFile, 	// File name (something.root)
+	Int_t runID,		// Unique identifier
 	Int_t runNum, 		// Run number
 	Int_t daq, 		// Which data acquisition system (3, 4, 5)
 	// These params can be read in from the .info file
@@ -94,6 +96,39 @@ int fit_pmt(
 	}
 
 	printf("MIN_PE, MAX_PE, NPE  = %d, %d, %d\n", MIN_PE, MAX_PE, NPE);
+
+/* Doesnt work
+	// Set up database for fetching and saving values
+	MYSQL_RES *result;
+	MYSQL_ROW row;
+	MYSQL *connection, mysql;
+
+	const char* server="127.0.0.1";
+	const char* user = "brady";
+	const char* password = "thesis";
+	const char* database = "gaindb";
+
+	int state;
+
+	mysql_init(&mysql);
+	connection = mysql_real_connect(&mysql,server,user,password,database,0,0,0);
+	
+	if (connection == NULL) {
+		printf("Null connection mysql\n");
+		return 1;
+	} 
+	state = mysql_query(connection, "SELECT * FROM exp_params");
+	if (state != 0) {
+		printf("error mysql\n");
+		return 1;
+	}
+
+	result = mysql_store_result(connection);
+	row = mysql_fetch_row(result);
+	
+	mysql_free_result(result);
+	mysql_close(connection);
+*/
 
 	// Pack parameters into nice arrays
 	Double_t initial[9] = {w0, ped0, pedrms0, alpha0, mu0, sig0, sigrms0, inj0, real0};
@@ -289,9 +324,29 @@ int fit_pmt(
 	Int_t ndf = fit_func->GetNDF();
 	Int_t nfitpoints = fit_func->GetNumberFitPoints();
 
+	// Get output values
+	Double_t wout = back[0];
+	Double_t pedout = back[1];
+	Double_t pedrmsout = back[2];
+	Double_t alphaout = back[3];
+	Double_t muout = back[4];
+	Double_t sigout = back[5];
+	Double_t sigrmsout = back[6];
+	Double_t injout = back[7];
+	Double_t realout = back[8];
+	Double_t wouterr = fit_func->GetParError(0);
+	Double_t pedouterr = fit_func->GetParError(1);
+	Double_t pedrmsouterr = fit_func->GetParError(2);
+	Double_t alphaouterr = fit_func->GetParError(3);
+	Double_t muouterr = fit_func->GetParError(4);
+	Double_t sigouterr = fit_func->GetParError(5);
+	Double_t sigrmsouterr = fit_func->GetParError(6);
+	Double_t injouterr = fit_func->GetParError(7);
+	Double_t realouterr = fit_func->GetParError(8);
+
 	// CALCULATE PMT GAIN USING AMPLIFICATION SETTING AND ADC CONVERSION FACTOR
-	Double_t gain = back[5] * 25.0 / 160.2 / (double)(amp);
-	Double_t gainError = fit_func->GetParError(5) * 25.0 / 160.2 / (double)(amp);
+	Double_t gain = sigout * 25.0 / 160.2 / (double)(amp);
+	Double_t gainError = sigouterr * 25.0 / 160.2 / (double)(amp);
 	gainError = gainError * (double)(chi / ndf);
 
 	// Set title of graph to display gain measurement
@@ -334,7 +389,7 @@ int fit_pmt(
 	// Compute summary string for this instance of fit
 	char summaryLine[1024];
         sprintf(summaryLine,
-                "macro:fit_pmt time:%s run:%d daq:%d chan:%d amp:%d dataRate:%d pedRate:%d hv:%d ll:%d filter:%d fitEngine:%d low:%d high:%d minPE:%d maxPE:%d w0:%.4f ped0:%.1f pedrms0:%.1f alpha0:%.4f mu0:%.2f sig0:%.1f sigrms0:%.1f inj0:%.2f real0:%.2f wmin:%.4f pedmin:%.1f pedrmsmin:%.1f alphamin:%.4f mumin:%.2f sigmin:%.1f sigrmsmin:%.1f injmin:%.2f realmin:%.2f wmax:%.4f pedmax:%.1f pedrmsmax:%.1f alphamax:%.4f mumax:%.2f sigmax:%.1f sigrmsmax:%.1f injmax:%.2f realmax:%.2f chi:%.2f ndf:%d nfitpoints:%d gain:%.2f",
+                "macro:fit_pmt time:%s run:%d daq:%d chan:%d amp:%d dataRate:%d pedRate:%d hv:%d ll:%d filter:%d fitEngine:%d low:%d high:%d minPE:%d maxPE:%d w0:%.4f ped0:%.1f pedrms0:%.1f alpha0:%.4f mu0:%.2f sig0:%.1f sigrms0:%.1f inj0:%.2f real0:%.2f wmin:%.4f pedmin:%.1f pedrmsmin:%.1f alphamin:%.4f mumin:%.2f sigmin:%.1f sigrmsmin:%.1f injmin:%.2f realmin:%.2f wmax:%.4f pedmax:%.1f pedrmsmax:%.1f alphamax:%.4f mumax:%.2f sigmax:%.1f sigrmsmax:%.1f injmax:%.2f realmax:%.2f wout:%.4f pedout:%.1f pedrmsout:%.1f alphaout:%.4f muout:%.2f sigout:%.1f sigrmsout:%.1f injout:%.2f realout:%.2f wouterr:%.4f pedouterr:%.1f pedrmsouterr:%.1f alphaouterr:%.4f muouterr:%.2f sigouterr:%.1f sigrmsouterr:%.1f injouterr:%.2f realouterr:%.2f chi:%.2f ndf:%d nfitpoints:%d gain:%.2f, gainerr:%.4f",
                 timestamp, runNum, daq, chan, amp, dataRate, 
 		pedRate, hv, ll, filter,  
 		fitEngine, low, high, minPE, maxPE,
@@ -344,7 +399,11 @@ int fit_pmt(
 		sigmin, sigrmsmin, injmin, realmin,
 		wmax, pedmax, pedrmsmax, alphamax, mumax,
 		sigmax, sigrmsmax, injmax, realmax,
-		chi, ndf, nfitpoints, gain
+		wout, pedout, pedrmsout, alphaout, muout,
+		sigout, sigrmsout, injout, realout,
+		wouterr, pedouterr, pedrmsouterr, alphaouterr, muouterr,
+		sigouterr, sigrmsouterr, injouterr, realouterr,
+		chi, ndf, nfitpoints, gain, gainError
         );
 	// Save summary strings to .info file
 	// Open file for appending
@@ -356,6 +415,24 @@ int fit_pmt(
 		file << summaryLine << endl;
 		file.close();
 	} else printf("\nUnable to open .info file\n");
+
+	// Create SQL query for storing all the output of this run in the gaindb
+	char queryLine[1024];
+	sprintf(queryLine, 
+		"USE gaindb; INSERT INTO fit_results (run_id, fit_engine, fit_low, fit_high, min_pe, max_pe, w_0, ped_0, ped_rms_0, alpha_0, mu_0, sig_0, sig_rms_0, inj_0, real_0, w_min, ped_min, ped_rms_min, alpha_min, mu_min, sig_min, sig_rms_min, inj_min, real_min, w_max, ped_max, ped_rms_max, alpha_max, mu_max, sig_max, sig_rms_max, inj_max, real_max, w_out, ped_out, ped_rms_out, alpha_out, mu_out, sig_out, sig_rms_out, inj_out, real_out, w_out_error, ped_out_error, ped_rms_out_error, alpha_out_error, mu_out_error, sig_out_error, sig_rms_out_error, inj_out_error, real_out_error, chi, gain, gain_error) VALUES('%d', '%d', '%d', '%d', '%d', '%d', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f');",
+		runID, fitEngine, low, high, minPE, maxPE,
+		w0, ped0, pedrms0, alpha0, mu0, sig0, sigrms0, inj0, real0,
+        	wmin, pedmin, pedrmsmin, alphamin, mumin, sigmin, sigrmsmin, injmin, realmin,
+        	wmax, pedmax, pedrmsmax, alphamax, mumax, sigmax, sigrmsmax, injmax, realmax,
+        	wout, pedout, pedrmsout, alphaout, muout, sigout, sigrmsout, injout, realout,
+        	wouterr, pedouterr, pedrmsouterr, alphaouterr, muouterr, sigouterr, sigrmsouterr, injouterr, realouterr,
+        	chi/double(ndf), gain, gainError
+	);
+	file.open("sql_output.txt", std::ofstream::out);
+	if (file.is_open()) {
+		file << queryLine << endl;
+		file.close();
+	} else printf("\nUnable to output the following to SQL file:\n%s\n", queryLine);
 
 
 	// Return chi squared per number of degrees of freedom (floored)

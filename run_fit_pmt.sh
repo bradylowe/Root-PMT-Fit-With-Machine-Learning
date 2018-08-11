@@ -1,20 +1,32 @@
 
 # run_fit_pmt.sh
 # Brady Lowe # lowebra2@isu.edu
+#
 #################################################################
-# This executable is hard-coded for certain filenames, and
-# it is designed for use in this directory. Upon execution of
-# this code, all png's in the current directory are moved into
-# a temporary directory while this script works. 
-
 # This script will call a root analyzer for every data run in
-# the current directory with a .info and .root file associated 
+# the current directory with a .root file associated 
 # with it. A png will be output for each data file, and all 
 # the png's will be montaged together (single copies deleted).
 ##################################################################
 
-#########################################################
-# PREPARE ALL PARAMETERS FOR FITTING, LOOK FOR ERRORS 
+########################
+# Define constants ###
+######################
+
+# Directory where data files are stored
+data_dir="dir_processed_data"
+# This is a file used to pass data back from the Root
+# macro to this script
+sqlfile="sql_output.txt"
+
+
+#######################################################
+# Decode input parameters
+######################################################
+#  ## Should have the form:  optionName=optionValue
+#  ## Example:               conGain=90
+#  ## This means we will constrain the gain to within
+#  ## 90% of what we think it really is.
 #######################################################
 
 # Loop through input parameters
@@ -53,23 +65,22 @@ for item in $* ; do
 	# Tile option to use for montage
 	elif [[ ${name} == "tile" ]] ; then
 		tile=${val}
-	# Print summary of this fit (true/false)
+	# Print summary of this fit to screen (true/false)
 	elif [[ ${name} == "printSum" ]] ; then
 		printSum=${val}
-	# Save png output
+	# Save png output (human format)
 	elif [[ ${name} == "savePNG" ]] ; then
 		savePNG=${val}
-	# Save neural network output
+	# Save png output (neural network format)
 	elif [[ ${name} == "saveNN" ]] ; then
 		saveNN=${val}
-	# Conditional statement for choosing which runs to evaluate
-	elif [[ ${name} == "condition" ]] ; then
-		condition=$(echo ${val} | sed -i "s/_/ /g")
-	# Flag for printing all info 
-	elif [[ ${name} == "diagnosticsMode" ]] ; then
-		diagnosticsMode=${val}
 	fi	
 done
+
+##########################################################
+# Check all necessary input values, initialize if needed
+# Correct errors
+##########################################################
 
 # Initialize no gain constrain
 if [ ${#conGain} -eq 0 ] ; then
@@ -97,14 +108,6 @@ if [ ${#saveNN} -eq 0 ] ; then
 elif [ ${saveNN} ] ; then
 	savePNG=false
 fi
-# Initialize condition
-if [ ${#condition} -eq 0 ] ; then
-	condition=true
-fi
-# Initialize diagnostics mode flag
-if [ ${#diagnosticsMode} -eq 0 ] ; then
-	diagnosticsMode=false
-fi
 # Make sure this file ends in .png
 if [ ${#pngFile} -gt 0 ] ; then
 	ext=$(echo ${pngFile} | awk -F'.' '{print $NF}')
@@ -131,39 +134,119 @@ fi
 # FOUND IN THE ABOVE PROCESSES
 ##############################
 
-# Check the root file existence before processing
+# If user sends in a root filename, just process the one file
+###############################################################
 if [ ${#rootFile} -gt 0 ] ; then
-	file=${rootFile}
-	ext=$(echo ${file} | awk -F'.' '{print $NF}')
-	if [ ${#ext} -eq 0 ] ; then
-		echo "${file} has no extension"
+
+	# Check for file existence
+	if [ ! -f ${rootFile} ] ; then
+		echo "${rootFile} doesn't exist. Exiting..."
 		exit
 	fi
-	if [[ ${ext} != "root" ]] ; then
-		echo "${file} does not end in .root"
-		exit
-	fi
-	if [ ! -f ${file} ] ; then
-		echo "cannot open ${file}"
-		exit
-	fi
+
+	# Remove the .root suffix and dir_.../ prefix
+	filename=${rootFile%.root}
+	filename=${filename#dir_*/}
+
+	# Grab the run parameters from the database
+	allitems=$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; SELECT * FROM exp_params WHERE run_id = '${runID}';")
+	set -- ${allitems}
+
 	# If all is good, execute macro on this root file
-	if ${diagnosticsMode} ; then
-		root -l "fit_pmt_wrapper.c(\"${file}\", ${printSum}, ${conInj}, ${conGain}, ${conLL}, ${savePNG}, ${saveNN}, ${fitEngine})"
-	else
-		root -l -b -q "fit_pmt_wrapper.c(\"${file}\", ${printSum}, ${conInj}, ${conGain}, ${conLL}, ${savePNG}, ${saveNN}, ${fitEngine})"
-	fi
+	root -l -b -q "fit_pmt_wrapper.c(\"${rootFile}\", $1, $2, $3, $11, $10, $5, $7, $8, $9, $12, $13, ${printSum}, ${conInj}, ${conGain}, ${conLL}, ${savePNG}, ${saveNN}, ${fitEngine})"
 
 	# Grab the output png
-	curpng=$(ls fit_pmt*__run${runNum}_chi*_time*.png | tail -n 1)
-	# Move into the proper folder
-	echo eog ${curpng}
+	curpng=$(ls fit_pmt*__run*_chi*_time*.png | tail -n 1)
+	# Move png into the proper folder (nn or human readable)
+	pngtype=$(echo ${curpng} | awk -F'__' '{print $1}')
+	if [[ ${pngtype} == "png_fit_nn" ]] ; then
+		mv ${curpng} png_fit_nn/.
+		echo eog png_fit_nn/${curpng}
+		eog png_fit_nn/${curpng}
+	else
+		mv ${curpng} png_fit/.
+		echo eog png_fit/${curpng}
+		eog png_fit/${curpng}
+	fi
+
+	# Query the database to store all output info from this fit
+	if [ -f ${sqlfile} ] ; then
+		# The query was created by the root macro and written to file
+		query=$(head -n 1 ${sqlfile})
+		# We don't want anything that is "not a number"
+		query=$(echo ${query} | sed "s/nan/-1.0/g")
+		res=$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "${query}")
+		if [[ ${res:0:5} != "ERROR" ]] ; then
+			# Delete file after query submission to avoid double submission
+			rm ${sqlfile}
+			# Alert user and exit
+			echo Run output successfully saved.
+			exit
+		fi
+	fi
+
+	# Alert user and exit
+	echo Unable to find SQL query. Run output NOT SAVED.
 	exit
 fi
+######################################
+# exit after executing fit on file
+##################################################################################
 
-########################################################################################
-# If the user doesn't send in a root file, use all the root files in this directory 
-# and make a montage. If there is no png filename, call it montage.png
+###############################################################################
+# If the user doesn't send in a root file, read the numbers in run_list.txt
+#
+#  ## You can set the values in run_list.txt via the script sql_select_data.sh.
+
+# Initialize lists of good pngs and bad pngs
+goodpngs=""
+badpngs=""
+allpngs=""
+
+
+# If the run_list.txt file doesn't exist, just exit
+if [ ! -f run_list.txt ] ; then
+	echo "No files to process. Exiting..."
+	exit
+fi
+# Loop through all files in list, run macro to create png and numbers each time
+for runID in $(head -n 1 run_list.txt) ; do
+
+	# Grab the run parameters from the database
+	allitems=$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; SELECT * FROM exp_params WHERE run_id = '${runID}';")
+	set -- ${allitems}
+	# Setup root file from base name and directory
+	rootfile="${data_dir}/${15}.root"
+
+	# Run fitting algorithm
+	chi2=$(root -l -b -q "fit_pmt_wrapper.c(\"${rootfile}\", ${runID}, $2, $3, ${11}, ${10}, $5, $7, $8, $9, ${12}, ${13}, ${printSum}, ${conInj}, ${conGain}, ${conLL}, ${savePNG}, ${saveNN}, ${fitEngine})")
+	chi2=$(echo ${chi2} | awk -F' ' '{print $NF}')
+	
+	# Get the filename of the png that was just created and add it to the list
+	curpng=$(ls fit_pmt*__run*_chi*_time*.png | tail -n 1)
+	allpngs="${allpngs} ${curpng}" 
+
+	# If the chi squared value is good enough, keep the image
+	if [ ${chi2} -lt 10 ] ; then
+		goodpngs="${goodpngs} ${curpng}"
+	# Otherwise, delete it
+	else
+		badpngs="${badpngs} ${curpng}"
+	fi
+
+	# Query the database to store all output info from this fit
+	if [ -f ${sqlfile} ] ; then
+		# The query was created by the root macro and written to file
+		query=$(head -n 1 ${sqlfile})
+		# We don't want anything that is "not a number"
+		query=$(echo ${query} | sed "s/nan/-1.0/g")
+		res=$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "${query}")
+		# Delete file after query submission to avoid double submission
+		if [[ ${res:0:5} != "ERROR" ]] ; then
+			rm ${sqlfile}
+		fi
+	fi
+done
 
 # Label each image with filename, create tile for each image,
 # use frame, and make appropriate size for viewing
@@ -172,47 +255,20 @@ if [ ${#tile} -gt 0 ] ; then
 	montageOptions="${montageOptions} -tile ${tile}" 
 fi
 
-# Initialize lists of good pngs and bad pngs
-goodpngs=""
-badpngs=""
-allpngs=""
-
-# Loop through all files in this directory, run macro to create pngs
-for file in $(ls r*.root) ; do
-	# Grab runNum from file name
-	if echo ${file} | grep _ ; then
-		runNum=${file:1}
-		runNum=$(echo ${runNum} | awk -F'_' '{print $1}')
-	else
-		runNum=${file:1}
-		runNum=$(echo ${runNum} | awk -F'.' '{print $1}')
-	fi
-	# Run macro	fit_pmt_wrapper.c(...)
-	# params: 	string rootFile, bool constrainInj, 
-	#		bool saveResults, bool saveNN, int fitEngine,
-	# returns: 	floor(chi squared per degree of freedom)
-	chi2=$(root -l -b -q "fit_pmt_wrapper.c(\"${file}\", ${printSum}, ${conInj}, ${conGain}, ${conLL}, ${savePNG}, ${saveNN}, ${fitEngine})")
-	chi2=$(echo ${chi2} | awk -F' ' '{print $NF}')
-	# Get the filename of the png that was just created
-	curpng=$(ls fit_pmt*__run${runNum}_chi*_time*.png | tail -n 1)
-	allpngs="${allpngs} ${curpng}" 
-	# If the chi2 value is good enough, then keep the image after
-	if [ ${chi2} -lt 5 ] ; then
-		goodpngs="${goodpngs} ${curpng}" 
-	# Otherwise, delete it
-	else
-		badpngs="${badpngs} ${curpng}"
-	fi
-done
-
-# Make montage from created pngs
+# Make montage from created pngs (default montage.png)
 if [ ${savePNG} ] ; then
-	montage ${montageOptions} ${allpngs} ${pngFile}
-	echo eog ${pngFile}
+	montage ${montageOptions} ${allpngs} images/${pngFile}
+	echo eog images/${pngFile}
+	eog images/${pngFile}
 fi
 
 # Move images
 if [ ${saveNN} ] ; then
-	mv ${allpngs} png_fit_nn/.
+	mv ${goodpngs} png_fit_nn/.
+elif [ ${savePNG} ] ; then
+	mv ${goodpngs} png_fit/.
 fi
+
+# Remove bad images
+rm ${badpngs}
 

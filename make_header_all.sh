@@ -1,13 +1,10 @@
 
-# DEFINE STRUCTURE OF HEADER OF INFO FILE
-attribs="pmt hv datarate pedrate ll filter nevents"
-
 # SET INPUT VALUE FOR ALL SELECTED RUNS
 for data in $(ls r*.root) ; do
 
+	filename=${data%.root}
 	# Check for existence of info file
-	info=$(echo ${data} | awk -F'.' '{print $1 }')
-	info="${info}.info"
+	info="${filename}.info"
 	if [ -f ${info} ] ; then
 		continue
 	fi
@@ -37,58 +34,60 @@ for data in $(ls r*.root) ; do
 		run=$(echo ${run} | awk -F'.' '{print $1}')
 	fi
 	# Define constants
-	user="brady"
-	roc=${daq}
 	chan="12"
 	gate="100"
 	amp=1
+	pmt=1
 
-	# Initialize info file line
-	line="user:${user} run:${run} daq:${daq} roc:${roc} adc:${adc} chan:${chan} gate:${gate} amp:${amp}"
-
-	# LOOP THROUGH ALL ATTRIBUTES IN FILE, BUILD OUTPUT
 	echo "---------------------------------"
 	echo "For ${data}"
 	echo "---------------------------------"
-	for attrib in ${attribs} ; do
-		# Handle the light level differently
-		if [[ ${attrib} == "ll" ]] ; then
-			# Light level has two parts separated by a comma
-			newval="empty"
-			newval2="empty"
-			val="empty"
-			read -p "Enter ${attrib}: " newval
-			read -p "Enter ${attrib}: " newval2
-			# If the user sent something, grab it
-                	if [ ${#newval} -ge 1 ] ; then
-                	        val=${newval}
-			fi
-			# If the user sent a 2nd value, grab it
-			if [[ ${val} != "empty" ]] ; then
-				if [ ${#newval2} -ge 1 ] ; then
-					val="${val},${newval2}"
-				# Otherwise, append a zero (if not empty)
-				else
-					val="${val},0"
-                		fi
-			fi
-			line="${line} ${attrib}:${val}"
-		else
-			newval="empty"
-			read -p "Enter ${attrib}: " newval
-			# If the user sent back a value, grab it
-                	if [ ${#newval} -ge 1 ] ; then
-                	        val=${newval}
-			else
-				val="empty"
-                	fi
-			line="${line} ${attrib}:${val}"
-		fi
-	done
+	##################################################
+	read -p "Enter hv: " hv
+	# If the user sent something, grab it
+        if [ ${#hv} -lt 1 ] ; then
+		hv="0"
+        fi
+	##################################################
+	read -p "Enter datarate: " datarate
+	# If the user sent something, grab it
+        if [ ${#datarate} -lt 1 ] ; then
+		datarate="0"
+        fi
+	##################################################
+	read -p "Enter pedrate: " pedrate
+	# If the user sent something, grab it
+        if [ ${#pedrate} -lt 1 ] ; then
+		pedrate="0"
+        fi
+	##################################################
+	read -p "Enter ll: " ll
+	# If the user sent something, grab it
+        if [ ${#ll} -lt 1 ] ; then
+		ll="0"
+        fi
+	##################################################
+	read -p "Enter filter: " filter
+	# If the user sent something, grab it
+        if [ ${#filter} -lt 1 ] ; then
+		filter="0"
+        fi
+	##################################################
+	read -p "Enter nevents: " nevents
+	# If the user sent something, grab it
+        if [ ${#nevents} -lt 1 ] ; then
+		nevents="0"
+        fi
 
 	# WRITE LINE TO FILE
+	line="run:${run} daq:${daq} adc:${adc} chan:${chan} gate:${gate} amp:${amp} pmt:${pmt} hv:${hv} datarate:${datarate} pedrate:${pedrate} ll:${ll} filter:${filter} nevents:${nevents}"
 	echo ${line} > ${info}
 	echo "${line} written to first line of ${info}"
+
+	# Submit info to database
+	query="USE gaindb; INSERT INTO exp_params (run, daq, adc, chan, gate, amp, pmt, hv, datarate, pedrate, ll, filter, nevents, filename) VALUES('${run}', '${daq}', '${adc}', '${chan}', '${gate}', '${amp}', '${pmt}', '${hv}', '${datarate}', '${pedrate}', '${ll}', '${filter}', '${nevents}', '${filename}');"
+	mysql -u brady -pthesis -Bse "${query}"
+
 
 done
 

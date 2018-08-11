@@ -13,193 +13,7 @@ Double_t channelsToGain = 25.0 / 160.2; // (25 fC / chan) / (160.2 fC / electron
 // All inputs into fit_pmt.c should be implemented in this function. This function should provide full
 // functionality of fit_pmt.c while also allowing the user to diagnose and test values as well as record
 // and keep track of previous fits to data files.
-int fit_pmt_wrapper(string rootFile, Bool_t printSummary = false, Int_t constrainInj = 100, Int_t constrainGain = 0, Int_t constrainLL = 0, Bool_t saveResults = false, Bool_t saveNN = false, Int_t fitEngine = 0, Double_t g0 = 0.0, Double_t mu0 = 0.0){
-
-	// Get some necessary values from the info file
-	/////////////////////////////////////////////////
-	// Define some variables to use in this process
-	string line, attribute, value;
-	Int_t start, end;
-	// Define variables to grab
-	Int_t runNum, daq, pedRate, dataRate, chan, amp, pmt, hv, ll, filter;
-	
-	// Open .info file
-	string infoFile = rootFile.substr(0, rootFile.find(".root"));
-	infoFile.append(".info");
-	ifstream file(infoFile.c_str());
-	if (file.is_open()) {
-		// Grab the first line of the file
-		getline(file, line);
-		
-		// GRAB THE RUNNUM FROM FILE
-		//////////////////////////////
-		// Define the current parameter in question
-		attribute = "run:";
-		// Cut off all data from the string BEFORE value
-		start = line.find(attribute, 0);
-		start += attribute.length();
-		value = line.substr(start);
-		// Cut off all data AFTER value
-		end = value.find(" ");
-		value = value.substr(0, end);
-		// Store value in integer form for later
-		// MUST HAVE RUNNUM INFO
-		if (value.compare("empty") == 0) return -2;
-		else runNum = stoi(value);
-
-		// GRAB THE DAQ FROM FILE
-		//////////////////////////////
-		// Define the current parameter in question
-		attribute = "daq:";
-		// Cut off all data from the string BEFORE value
-		start = line.find(attribute, 0);
-		start += attribute.length();
-		value = line.substr(start);
-		// Cut off all data AFTER value
-		end = value.find(" ");
-		value = value.substr(0, end);
-		// Store value in integer form for later
-		if (value.compare("empty") == 0) daq = 0;
-		else daq = stoi(value);
-
-		// GRAB THE DATARATE FROM FILE
-		//////////////////////////////
-		// Define the current parameter in question
-		attribute = "datarate:";
-		// Cut off all data from the string BEFORE value
-		start = line.find(attribute, 0);
-		start += attribute.length();
-		value = line.substr(start);
-		// Cut off all data AFTER value
-		end = value.find(" ");
-		value = value.substr(0, end);
-		// Store value in integer form for later
-		if (value.compare("empty") == 0) dataRate = 0;
-		else dataRate = stoi(value);
-		
-		// GRAB THE PEDRATE FROM FILE
-		//////////////////////////////
-		// Define the current parameter in question
-		attribute = "pedrate:";
-		// Cut off all data from the string BEFORE value
-		start = line.find(attribute, 0);
-		start += attribute.length();
-		value = line.substr(start);
-		// Cut off all data AFTER value
-		end = value.find(" ");
-		value = value.substr(0, end);
-		// Store value in integer form for later
-		if (value.compare("empty") == 0) pedRate = 0;
-		else pedRate = stoi(value);
-		
-		// GRAB THE CHANNEL FROM FILE
-		//////////////////////////////
-		// Define the current parameter in question
-		attribute = "chan:";
-		// Cut off all data from the string BEFORE value
-		start = line.find(attribute, 0);
-		start += attribute.length();
-		value = line.substr(start);
-		// Cut off all data AFTER value
-		end = value.find(" ");
-		value = value.substr(0, end);
-		// MUST HAVE CHANNEL INFO
-		if (value.compare("empty") == 0) return -2;
-		// Store value in integer form for later
-		chan = stoi(value);
-		
-		// GRAB THE AMPLIFICATION FROM FILE
-		//////////////////////////////
-		// Define the current parameter in question
-		attribute = "amp:";
-		// Cut off all data from the string BEFORE value
-		start = line.find(attribute, 0);
-		start += attribute.length();
-		value = line.substr(start);
-		// Cut off all data AFTER value
-		end = value.find(" ");
-		value = value.substr(0, end);
-		// Store value in integer form for later
-		if (value.compare("empty") == 0) amp = 1;
-		else amp = stoi(value);
-		
-		// GRAB THE PMT FROM FILE
-		//////////////////////////////
-		// Define the current parameter in question
-		attribute = "pmt:";
-		// Cut off all data from the string BEFORE value
-		start = line.find(attribute, 0);
-		start += attribute.length();
-		value = line.substr(start);
-		// Cut off all data AFTER value
-		end = value.find(" ");
-		value = value.substr(0, end);
-		// Store value in integer form for later
-		if (value.compare("empty") == 0) pmt = 0;
-		else pmt = stoi(value);
-		
-		// GRAB THE HIGH VOLTAGE FROM FILE
-		//////////////////////////////////
-		// Define the current parameter in question
-		attribute = "hv:";
-		// Cut off all data from the string BEFORE value
-		start = line.find(attribute, 0);
-		start += attribute.length();
-		value = line.substr(start);
-		// Cut off all data AFTER value
-		end = value.find(" ");
-		value = value.substr(0, end);
-		// Store value in integer form for later
-		if (value.compare("empty") == 0) hv = -1;
-		else if (value.compare("off") == 0) hv = -1;
-		else hv = stoi(value);
-		
-		// GRAB THE LIGHT LEVEL FROM FILE
-		/////////////////////////////////
-		// Define the current parameter in question
-		attribute = "ll:";
-		// Cut off all data from the string BEFORE value
-		start = line.find(attribute, 0);
-		start += attribute.length();
-		value = line.substr(start);
-		// Cut off all data AFTER value
-		end = value.find(" ");
-		value = value.substr(0, end);
-		// Store value in integer form for later
-		if (value.compare("empty") == 0) ll = 0;
-		else if (value.compare("shut") == 0) ll = 0;
-		else if (value.compare("low") == 0) ll = 35;
-		else if (value.compare("medium") == 0) ll = 55;
-		else if (value.compare("high") == 0) ll = 75;
-		else {
-			end = value.find(",");
-			ll = stoi(value.substr(end + 1));
-			ll += 10 * stoi(value.substr(0, end));
-		}
-		
-		// GRAB THE FILTER FROM FILE
-		////////////////////////////
-		// Define the current parameter in question
-		attribute = "filter:";
-		// Cut off all data from the string BEFORE value
-		start = line.find(attribute, 0);
-		start += attribute.length();
-		value = line.substr(start);
-		// Cut off all data AFTER value
-		end = value.find(" ");
-		value = value.substr(0, end);
-		// Store value in integer form for later
-		if (value.compare("shut") == 0 || value.compare("empty") == 0) {
-			filter = 0;
-			ll = 0;
-		} else filter = stoi(value);
-
-		// Close file
-		file.close();
-	} else {
-		printf("Couldn't open file %s\n", infoFile.c_str());
-		return -2;
-	}
+int fit_pmt_wrapper(string rootFile, Int_t runID, Int_t runNum, Int_t daq, Int_t pedRate, Int_t dataRate, Int_t chan, Int_t amp, Int_t pmt, Int_t hv, Int_t ll, Int_t filter, Bool_t printSummary = false, Int_t constrainInj = 100, Int_t constrainGain = 0, Int_t constrainLL = 0, Bool_t saveResults = false, Bool_t saveNN = false, Int_t fitEngine = 0, Double_t g0 = 0.0, Double_t mu0 = 0.0){
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	///// SET UP HARD-CODED VALUES PERTAINING TO PMTS AND LIGHT SOURCE
@@ -500,6 +314,7 @@ int fit_pmt_wrapper(string rootFile, Bool_t printSummary = false, Int_t constrai
 		printf("  ##  Summary for this fit  ##  \n");
 		printf("  #########################################  \n"); // 9 parameters
 		printf("  run:      %d \n", runNum);
+		printf("  runID:    %d \n", runID);
 		printf("  daq:      %d \n", daq);
 		printf("  chan:     %d \n", chan);
 		printf("  amp:      %d \n", amp);
@@ -534,7 +349,7 @@ int fit_pmt_wrapper(string rootFile, Bool_t printSummary = false, Int_t constrai
 	}
 	// Call the function with the appropriate params
 	return fit_pmt(
-		rootFile, runNum, daq, chan, amp, dataRate, 	// 6 params
+		rootFile, runID, runNum, daq, chan, amp, dataRate, // 6 params
 		pedRate, hv, ll, filter, saveResults, 		// 5 params
 		saveNN, fitEngine, low, high, minPE, maxPE,	// 6 params
 		w0, ped0, pedrms0, alpha0, mu0, 		// 5 params
