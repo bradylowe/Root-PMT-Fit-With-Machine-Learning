@@ -19,10 +19,11 @@ dataset_interface_model.h5/.json -- similar to above
 
 Additional files:
 sort_data.sh -- shell script for rearranging files in directory
+sql_select_runs.sh -- shell script for sorting runs by expt'l params
 make_header_all.sh -- shell script for catalouging expt'l setup
 pmt3_injstudy_conGain70_conInj0.png -- example output of fit algorithm
 r410_v965ST_5.root -- example data file (filled histograms)
-r410_v965ST_5.info -- example info file for expt'l setup information
+r410_v965ST_5.info -- example info file for expt'l setup information (NO LONGER USED)
 
 Training images (in images directory)
   Training set 80%
