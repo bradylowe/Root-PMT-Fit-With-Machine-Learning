@@ -1,6 +1,10 @@
 # fit_pmt
 A collection of code for fitting low-light PMT data to measure the PMT gain.
 
+The *.c files are Root (c++ interpreter) code.
+The *.sh files are Linux shell scripts.
+The *.ipynb are Jupyter notebook files.
+
 List of source files:
 1)  fit_pmt.c -- hardcore math (Root) for fitting histograms to functions
 2)  fit_pmt_wrapper.c -- human callable wrapper for using fit_pmt.c
