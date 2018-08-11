@@ -105,8 +105,6 @@ fi
 # Initialize saveNN
 if [ ${#saveNN} -eq 0 ] ; then
 	saveNN=false
-elif [ ${saveNN} ] ; then
-	savePNG=false
 fi
 # Make sure this file ends in .png
 if [ ${#pngFile} -gt 0 ] ; then
@@ -155,18 +153,18 @@ if [ ${#rootFile} -gt 0 ] ; then
 	# If all is good, execute macro on this root file
 	root -l -b -q "fit_pmt_wrapper.c(\"${rootFile}\", $1, $2, $3, $11, $10, $5, $7, $8, $9, $12, $13, ${printSum}, ${conInj}, ${conGain}, ${conLL}, ${savePNG}, ${saveNN}, ${fitEngine})"
 
-	# Grab the output png
-	curpng=$(ls fit_pmt*__run*_chi*_time*.png | tail -n 1)
-	# Move png into the proper folder (nn or human readable)
-	pngtype=$(echo ${curpng} | awk -F'__' '{print $1}')
-	if [[ ${pngtype} == "png_fit_nn" ]] ; then
-		mv ${curpng} png_fit_nn/.
-		echo eog png_fit_nn/${curpng}
-		eog png_fit_nn/${curpng}
-	else
-		mv ${curpng} png_fit/.
-		echo eog png_fit/${curpng}
-		eog png_fit/${curpng}
+	# Grab the output pngs
+	if [ ${savePNG} ] ; then
+		humanpng=$(ls fit_pmt__run$2_chi*_time*.png | tail -n 1)
+		mv ${humanpng} png_fit/.
+		echo eog png_fit/${humanpng}
+		eog png_fit/${humanpng}
+	fi
+	if [ ${saveNN} ] ; then
+		nnpng=$(ls fit_pmt_nn__run$2_chi*_time*.png | tail -n 1)
+		mv ${nnpng} png_fit_nn/.
+		echo eog png_fit_nn/${nnpng}
+		eog png_fit_nn/${nnpng}
 	fi
 
 	# Query the database to store all output info from this fit
@@ -201,7 +199,8 @@ fi
 # Initialize lists of good pngs and bad pngs
 goodpngs=""
 badpngs=""
-allpngs=""
+humanpngs=""
+nnpngs=""
 
 
 # If the run_list.txt file doesn't exist, just exit
@@ -221,17 +220,31 @@ for runID in $(head -n 1 run_list.txt) ; do
 	# Run fitting algorithm
 	chi2=$(root -l -b -q "fit_pmt_wrapper.c(\"${rootfile}\", ${runID}, $2, $3, ${11}, ${10}, $5, $7, $8, $9, ${12}, ${13}, ${printSum}, ${conInj}, ${conGain}, ${conLL}, ${savePNG}, ${saveNN}, ${fitEngine})")
 	chi2=$(echo ${chi2} | awk -F' ' '{print $NF}')
+	echo chi2 ${chi2}
 	
-	# Get the filename of the png that was just created and add it to the list
-	curpng=$(ls fit_pmt*__run*_chi*_time*.png | tail -n 1)
-	allpngs="${allpngs} ${curpng}" 
+	# Grab the output pngs
+	humanpng=""
+	if [ ${savePNG} ] ; then
+		humanpng=$(ls fit_pmt__run$2_chi*_time*.png | tail -n 1)
+		humanpngs="${humanpngs} ${humanpng}" 
+		mv ${humanpng} png_fit/.
+		echo eog png_fit/${humanpng}
+		eog png_fit/${humanpng}
+	fi
+	if [ ${saveNN} ] ; then
+		nnpng=$(ls fit_pmt_nn__run$2_chi*_time*.png | tail -n 1)
+		nnpngs="${nnpngs} ${nnpng}"
+		mv ${nnpng} png_fit_nn/.
+		echo eog png_fit_nn/${nnpng}
+		eog png_fit_nn/${nnpng}
+	fi
 
 	# If the chi squared value is good enough, keep the image
 	if [ ${chi2} -lt 10 ] ; then
-		goodpngs="${goodpngs} ${curpng}"
+		goodpngs="${goodpngs} ${humanpng}"
 	# Otherwise, delete it
 	else
-		badpngs="${badpngs} ${curpng}"
+		badpngs="${badpngs} ${humanpng}"
 	fi
 
 	# Query the database to store all output info from this fit
@@ -257,18 +270,17 @@ fi
 
 # Make montage from created pngs (default montage.png)
 if [ ${savePNG} ] ; then
-	montage ${montageOptions} ${allpngs} images/${pngFile}
+	montage ${montageOptions} ${humanpngs} images/${pngFile}
 	echo eog images/${pngFile}
 	eog images/${pngFile}
 fi
 
 # Move images
-if [ ${saveNN} ] ; then
-	mv ${goodpngs} png_fit_nn/.
-elif [ ${savePNG} ] ; then
+if [ ${savePNG} ] ; then
 	mv ${goodpngs} png_fit/.
+	rm ${badpngs}
 fi
-
-# Remove bad images
-rm ${badpngs}
+if [ ${saveNN} ] ; then
+	mv ${nnpngs} png_fit_nn/.
+fi
 
