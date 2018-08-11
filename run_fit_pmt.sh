@@ -220,23 +220,16 @@ for runID in $(head -n 1 run_list.txt) ; do
 	# Run fitting algorithm
 	chi2=$(root -l -b -q "fit_pmt_wrapper.c(\"${rootfile}\", ${runID}, $2, $3, ${11}, ${10}, $5, $7, $8, $9, ${12}, ${13}, ${printSum}, ${conInj}, ${conGain}, ${conLL}, ${savePNG}, ${saveNN}, ${fitEngine})")
 	chi2=$(echo ${chi2} | awk -F' ' '{print $NF}')
-	echo chi2 ${chi2}
 	
 	# Grab the output pngs
 	humanpng=""
-	if [ ${savePNG} ] ; then
+	if [[ ${savePNG} == "true" ]] ; then
 		humanpng=$(ls fit_pmt__run$2_chi*_time*.png | tail -n 1)
 		humanpngs="${humanpngs} ${humanpng}" 
-		mv ${humanpng} png_fit/.
-		echo eog png_fit/${humanpng}
-		eog png_fit/${humanpng}
 	fi
-	if [ ${saveNN} ] ; then
+	if [[ ${saveNN} == "true" ]] ; then
 		nnpng=$(ls fit_pmt_nn__run$2_chi*_time*.png | tail -n 1)
 		nnpngs="${nnpngs} ${nnpng}"
-		mv ${nnpng} png_fit_nn/.
-		echo eog png_fit_nn/${nnpng}
-		eog png_fit_nn/${nnpng}
 	fi
 
 	# If the chi squared value is good enough, keep the image
@@ -268,18 +261,19 @@ if [ ${#tile} -gt 0 ] ; then
 	montageOptions="${montageOptions} -tile ${tile}" 
 fi
 
-# Make montage from created pngs (default montage.png)
-if [ ${savePNG} ] ; then
+# Finish handling human images
+if [[ ${savePNG} == "true" ]] ; then
+	# Make montage from created pngs (default montage.png)
 	montage ${montageOptions} ${humanpngs} images/${pngFile}
 	echo eog images/${pngFile}
 	eog images/${pngFile}
-fi
 
-# Move images
-if [ ${savePNG} ] ; then
+	# Move images
 	mv ${goodpngs} png_fit/.
 	rm ${badpngs}
 fi
+
+# Handle NN images
 if [ ${saveNN} ] ; then
 	mv ${nnpngs} png_fit_nn/.
 fi
