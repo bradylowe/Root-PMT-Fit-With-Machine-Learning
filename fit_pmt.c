@@ -12,7 +12,6 @@
 
 #include "Math/SpecFunc.h"
 #include "dataAnalyzer.c"
-#include <mysql/mysql.h>
 
 #include <TMinuit.h>
 #include <TApplication.h>
@@ -45,7 +44,8 @@ static const double twopi = 2 * 3.141592653589793;
 int fit_pmt(
 	// The first 3 parameters must be passed in
 	string rootFile, 	// File name (something.root)
-	Int_t runID,		// Unique identifier
+	Int_t runID,		// Unique run identifier
+	Int_t fitID, 		// Unique fit identifier
 	Int_t runNum, 		// Run number
 	Int_t daq, 		// Which data acquisition system (3, 4, 5)
 	// These params can be read in from the .info file
@@ -256,6 +256,7 @@ int fit_pmt(
 	TCanvas *can=new TCanvas("can","can");
 	can->cd();
 	gStyle->SetOptFit(1);
+	TGaxis::SetMaxDigits(3);
 	h_QDC->SetMarkerSize(0.7);
 	h_QDC->SetMarkerStyle(20);
 	h_QDC->GetXaxis()->SetTitle("QDC channel");
@@ -347,21 +348,26 @@ int fit_pmt(
 	// CALCULATE PMT GAIN USING AMPLIFICATION SETTING AND ADC CONVERSION FACTOR
 	Double_t gain = sigout * 25.0 / 160.2 / (double)(amp);
 	Double_t gainError = sigouterr * 25.0 / 160.2 / (double)(amp);
-	gainError = gainError * (double)(chi / ndf);
+	Double_t chiPerNDF = (double)(chi / ndf);
+	if (chiPerNDF > 1.0) {
+		gainError = gainError * sqrt(chiPerNDF);
+	}
+	Double_t gainPercentError = gainError / gain * 100;
 
 	// Set title of graph to display gain measurement
-	sprintf(Title, "gain: (%.2f, %.3f, %.1f%%)", gain, gainError, gainError / gain * 100);
+	sprintf(Title, "gain: (%.2f, %.3f, %.1f%%)", gain, gainError, gainPercentError);
         h_QDC->SetTitle(Title);
 
 	// DEFINE USER IMAGE FILE AND NN IMAGE FILE
 	char humanImFile[256];
 	char nnImFile[256];
-	sprintf(humanImFile, "fit_pmt__run%d_chi%d_time%s.png", runNum, int(chi / ndf), timestamp);
-	sprintf(nnImFile, "fit_pmt_nn__run%d_chi%d_time%s.png", runNum, int(chi / ndf), timestamp);
+	sprintf(humanImFile, "fit_pmt__chi%d_runID%d_fitID%d.png", int(chiPerNDF), runID, fitID);
+	sprintf(nnImFile, "fit_pmt_nn__chi%d_runID%d_fitID%d_gain%d_hv%d_ll%d_fitEngine%d_low%d_high%d.png", int(chiPerNDF), runID, fitID, int(gain * 1000), hv, ll, fitEngine, low, high);
 	//char nnImFile[256];
 	//sprintf(nnImFile, "fit_pmt_nn__run%d_daq%d_chi%d_time%s.png", runNum, daq, int(chi) / ndf, timestamp);
 
 	// IF SAVING HUMAN OUTPUT IMAGE ...
+	h_QDC->GetYaxis()->SetDefaults();
 	if (saveResults) can->Print(humanImFile);
 
 	// IF SAVING OUTPUT FOR INPUTTING INTO NN ...
@@ -386,47 +392,18 @@ int fit_pmt(
 	    	can->Print(nnImFile);
 	}
 
-	// Compute summary string for this instance of fit
-	char summaryLine[1024];
-        sprintf(summaryLine,
-                "macro:fit_pmt time:%s run:%d daq:%d chan:%d amp:%d dataRate:%d pedRate:%d hv:%d ll:%d filter:%d fitEngine:%d low:%d high:%d minPE:%d maxPE:%d w0:%.4f ped0:%.1f pedrms0:%.1f alpha0:%.4f mu0:%.2f sig0:%.1f sigrms0:%.1f inj0:%.2f real0:%.2f wmin:%.4f pedmin:%.1f pedrmsmin:%.1f alphamin:%.4f mumin:%.2f sigmin:%.1f sigrmsmin:%.1f injmin:%.2f realmin:%.2f wmax:%.4f pedmax:%.1f pedrmsmax:%.1f alphamax:%.4f mumax:%.2f sigmax:%.1f sigrmsmax:%.1f injmax:%.2f realmax:%.2f wout:%.4f pedout:%.1f pedrmsout:%.1f alphaout:%.4f muout:%.2f sigout:%.1f sigrmsout:%.1f injout:%.2f realout:%.2f wouterr:%.4f pedouterr:%.1f pedrmsouterr:%.1f alphaouterr:%.4f muouterr:%.2f sigouterr:%.1f sigrmsouterr:%.1f injouterr:%.2f realouterr:%.2f chi:%.2f ndf:%d nfitpoints:%d gain:%.2f, gainerr:%.4f",
-                timestamp, runNum, daq, chan, amp, dataRate, 
-		pedRate, hv, ll, filter,  
-		fitEngine, low, high, minPE, maxPE,
-		w0, ped0, pedrms0, alpha0, mu0,
-		sig0, sigrms0, inj0, real0,
-		wmin, pedmin, pedrmsmin, alphamin, mumin,
-		sigmin, sigrmsmin, injmin, realmin,
-		wmax, pedmax, pedrmsmax, alphamax, mumax,
-		sigmax, sigrmsmax, injmax, realmax,
-		wout, pedout, pedrmsout, alphaout, muout,
-		sigout, sigrmsout, injout, realout,
-		wouterr, pedouterr, pedrmsouterr, alphaouterr, muouterr,
-		sigouterr, sigrmsouterr, injouterr, realouterr,
-		chi, ndf, nfitpoints, gain, gainError
-        );
-	// Save summary strings to .info file
-	// Open file for appending
-	ofstream file;
-	file.open(infoFile.c_str(), std::ofstream::out | std::ofstream::app);
-	// If file opens properly ...
-	if (file.is_open()) {
-		// Write line to file and close
-		file << summaryLine << endl;
-		file.close();
-	} else printf("\nUnable to open .info file\n");
-
 	// Create SQL query for storing all the output of this run in the gaindb
-	char queryLine[1024];
+	ofstream file;
+	char queryLine[2048];
 	sprintf(queryLine, 
-		"USE gaindb; INSERT INTO fit_results (run_id, fit_engine, fit_low, fit_high, min_pe, max_pe, w_0, ped_0, ped_rms_0, alpha_0, mu_0, sig_0, sig_rms_0, inj_0, real_0, w_min, ped_min, ped_rms_min, alpha_min, mu_min, sig_min, sig_rms_min, inj_min, real_min, w_max, ped_max, ped_rms_max, alpha_max, mu_max, sig_max, sig_rms_max, inj_max, real_max, w_out, ped_out, ped_rms_out, alpha_out, mu_out, sig_out, sig_rms_out, inj_out, real_out, w_out_error, ped_out_error, ped_rms_out_error, alpha_out_error, mu_out_error, sig_out_error, sig_rms_out_error, inj_out_error, real_out_error, chi, gain, gain_error) VALUES('%d', '%d', '%d', '%d', '%d', '%d', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f');",
+		"USE gaindb; INSERT INTO fit_results (run_id, fit_engine, fit_low, fit_high, min_pe, max_pe, w_0, ped_0, ped_rms_0, alpha_0, mu_0, sig_0, sig_rms_0, inj_0, real_0, w_min, ped_min, ped_rms_min, alpha_min, mu_min, sig_min, sig_rms_min, inj_min, real_min, w_max, ped_max, ped_rms_max, alpha_max, mu_max, sig_max, sig_rms_max, inj_max, real_max, w_out, ped_out, ped_rms_out, alpha_out, mu_out, sig_out, sig_rms_out, inj_out, real_out, w_out_error, ped_out_error, ped_rms_out_error, alpha_out_error, mu_out_error, sig_out_error, sig_rms_out_error, inj_out_error, real_out_error, chi, gain, gain_error, gain_percent_error, human_png, nn_png, root_file) VALUES('%d', '%d', '%d', '%d', '%d', '%d', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%s', '%s', '%s');",
 		runID, fitEngine, low, high, minPE, maxPE,
 		w0, ped0, pedrms0, alpha0, mu0, sig0, sigrms0, inj0, real0,
         	wmin, pedmin, pedrmsmin, alphamin, mumin, sigmin, sigrmsmin, injmin, realmin,
         	wmax, pedmax, pedrmsmax, alphamax, mumax, sigmax, sigrmsmax, injmax, realmax,
         	wout, pedout, pedrmsout, alphaout, muout, sigout, sigrmsout, injout, realout,
         	wouterr, pedouterr, pedrmsouterr, alphaouterr, muouterr, sigouterr, sigrmsouterr, injouterr, realouterr,
-        	chi/double(ndf), gain, gainError
+        	chi/double(ndf), gain, gainError, gainPercentError, humanImFile, nnImFile, rootFile.c_str()
 	);
 	file.open("sql_output.txt", std::ofstream::out);
 	if (file.is_open()) {

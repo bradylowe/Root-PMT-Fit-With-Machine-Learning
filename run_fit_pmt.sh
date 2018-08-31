@@ -74,6 +74,13 @@ for item in $* ; do
 	# Save png output (neural network format)
 	elif [[ ${name} == "saveNN" ]] ; then
 		saveNN=${val}
+	# List of runID's 
+	elif [[ ${name} == "runs" ]] ; then
+		runs=${val}
+		echo ${runs}
+	# Single runID
+	elif [[ ${name} == "run_id" ]] ; then
+		runID=${val}
 	fi	
 done
 
@@ -118,8 +125,6 @@ if [ ${#pngFile} -gt 0 ] ; then
 		exit
 	fi
 else
-	# Initialize value, if need be
-	echo "Using pngFile = montage.png"
 	pngFile="montage.png"
 fi
 # Initialize fitEngine selection
@@ -134,7 +139,13 @@ fi
 
 # If user sends in a root filename, just process the one file
 ###############################################################
-if [ ${#rootFile} -gt 0 ] ; then
+if [ ${#rootFile} -gt 0 -o ${#runID} -gt 0 ] ; then
+	
+	# Get rootfile
+	if [ ${#rootFile} -eq 0 ] ; then
+		rootFile=$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; SELECT filename FROM exp_params WHERE run_id=${runID}")
+		rootFile="dir_processed_data/${rootFile}.root"
+	fi
 
 	# Check for file existence
 	if [ ! -f ${rootFile} ] ; then
@@ -147,24 +158,24 @@ if [ ${#rootFile} -gt 0 ] ; then
 	filename=${filename#dir_*/}
 
 	# Grab the run parameters from the database
-	allitems=$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; SELECT * FROM exp_params WHERE run_id = '${runID}';")
+	allitems=$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; SELECT * FROM exp_params WHERE filename = '${filename}';")
 	set -- ${allitems}
+	fitID=$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; SELECT MAX(fit_id) FROM fit_results;")
+	fitID=$((fitID + 1))
 
 	# If all is good, execute macro on this root file
-	root -l -b -q "fit_pmt_wrapper.c(\"${rootFile}\", $1, $2, $3, $11, $10, $5, $7, $8, $9, $12, $13, ${printSum}, ${conInj}, ${conGain}, ${conLL}, ${savePNG}, ${saveNN}, ${fitEngine})"
+	root -l "fit_pmt_wrapper.c(\"${rootFile}\", $1, ${fitID}, $2, $3, ${11}, ${10}, $5, $7, $8, $9, ${12}, ${13}, ${printSum}, ${conInj}, ${conGain}, ${conLL}, ${savePNG}, ${saveNN}, ${fitEngine})"
 
 	# Grab the output pngs
-	if [ ${savePNG} ] ; then
-		humanpng=$(ls fit_pmt__run$2_chi*_time*.png | tail -n 1)
+	if [[ ${savePNG} == "true" ]] ; then
+		humanpng=$(ls fit_pmt__chi*_runID${1}_fitID${fitID}.png | tail -n 1)
 		mv ${humanpng} png_fit/.
 		echo eog png_fit/${humanpng}
-		eog png_fit/${humanpng}
 	fi
-	if [ ${saveNN} ] ; then
-		nnpng=$(ls fit_pmt_nn__run$2_chi*_time*.png | tail -n 1)
+	if [[ ${saveNN} == "true" ]] ; then
+		nnpng=$(ls fit_pmt_nn__chi*_runID${1}_fitID${fitID}_*.png | tail -n 1)
 		mv ${nnpng} png_fit_nn/.
 		echo eog png_fit_nn/${nnpng}
-		eog png_fit_nn/${nnpng}
 	fi
 
 	# Query the database to store all output info from this fit
@@ -203,32 +214,43 @@ humanpngs=""
 nnpngs=""
 
 
-# If the run_list.txt file doesn't exist, just exit
-if [ ! -f run_list.txt ] ; then
+# Check for a list  of runs from user input or stored in run_list.txt
+if [ ! -f run_list.txt -a ${#runs} -eq 0 ] ; then
 	echo "No files to process. Exiting..."
 	exit
 fi
+
+# Grab run list either from user input, or from file
+if [ ${#runs} -gt 0 ] ; then
+	run_list=${runs}
+else
+	run_list=$(head -n 1 run_list.txt)
+fi
+run_list=$(echo ${run_list} | sed "s/,/ /g" )
+
 # Loop through all files in list, run macro to create png and numbers each time
-for runID in $(head -n 1 run_list.txt) ; do
+for runID in ${run_list} ; do
 
 	# Grab the run parameters from the database
 	allitems=$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; SELECT * FROM exp_params WHERE run_id = '${runID}';")
+	fitID=$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; SELECT MAX(fit_id) FROM fit_results;")
+	fitID=$((fitID + 1))
 	set -- ${allitems}
 	# Setup root file from base name and directory
 	rootfile="${data_dir}/${15}.root"
 
 	# Run fitting algorithm
-	chi2=$(root -l -b -q "fit_pmt_wrapper.c(\"${rootfile}\", ${runID}, $2, $3, ${11}, ${10}, $5, $7, $8, $9, ${12}, ${13}, ${printSum}, ${conInj}, ${conGain}, ${conLL}, ${savePNG}, ${saveNN}, ${fitEngine})")
+	chi2=$(root -l -b -q "fit_pmt_wrapper.c(\"${rootfile}\", ${runID}, ${fitID}, $2, $3, ${11}, ${10}, $5, $7, $8, $9, ${12}, ${13}, ${printSum}, ${conInj}, ${conGain}, ${conLL}, ${savePNG}, ${saveNN}, ${fitEngine})")
 	chi2=$(echo ${chi2} | awk -F' ' '{print $NF}')
 	
 	# Grab the output pngs
 	humanpng=""
 	if [[ ${savePNG} == "true" ]] ; then
-		humanpng=$(ls fit_pmt__run$2_chi*_time*.png | tail -n 1)
+		humanpng=$(ls fit_pmt__chi*_runID${1}_fitID${fitID}.png | tail -n 1)
 		humanpngs="${humanpngs} ${humanpng}" 
 	fi
 	if [[ ${saveNN} == "true" ]] ; then
-		nnpng=$(ls fit_pmt_nn__run$2_chi*_time*.png | tail -n 1)
+		nnpng=$(ls fit_pmt_nn__chi*_runID${1}_fitID${fitID}_*.png | tail -n 1)
 		nnpngs="${nnpngs} ${nnpng}"
 	fi
 
@@ -248,9 +270,9 @@ for runID in $(head -n 1 run_list.txt) ; do
 		query=$(echo ${query} | sed "s/nan/-1.0/g")
 		res=$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "${query}")
 		# Delete file after query submission to avoid double submission
-		if [[ ${res:0:5} != "ERROR" ]] ; then
-			rm ${sqlfile}
-		fi
+		#if [[ ${res:0:5} != "ERROR" ]] ; then
+		#	rm ${sqlfile}
+		#fi
 	fi
 done
 
@@ -266,7 +288,6 @@ if [[ ${savePNG} == "true" ]] ; then
 	# Make montage from created pngs (default montage.png)
 	montage ${montageOptions} ${humanpngs} images/${pngFile}
 	echo eog images/${pngFile}
-	eog images/${pngFile}
 
 	# Move images
 	mv ${goodpngs} png_fit/.
@@ -274,7 +295,7 @@ if [[ ${savePNG} == "true" ]] ; then
 fi
 
 # Handle NN images
-if [ ${saveNN} ] ; then
+if [[ ${saveNN} == "true" ]] ; then
 	mv ${nnpngs} png_fit_nn/.
 fi
 

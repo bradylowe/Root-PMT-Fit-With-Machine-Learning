@@ -13,7 +13,7 @@ Double_t channelsToGain = 25.0 / 160.2; // (25 fC / chan) / (160.2 fC / electron
 // All inputs into fit_pmt.c should be implemented in this function. This function should provide full
 // functionality of fit_pmt.c while also allowing the user to diagnose and test values as well as record
 // and keep track of previous fits to data files.
-int fit_pmt_wrapper(string rootFile, Int_t runID, Int_t runNum, Int_t daq, Int_t pedRate, Int_t dataRate, Int_t chan, Int_t amp, Int_t pmt, Int_t hv, Int_t ll, Int_t filter, Bool_t printSummary = false, Int_t constrainInj = 100, Int_t constrainGain = 0, Int_t constrainLL = 0, Bool_t saveResults = false, Bool_t saveNN = false, Int_t fitEngine = 0, Double_t g0 = 0.0, Double_t mu0 = 0.0){
+int fit_pmt_wrapper(string rootFile, Int_t runID, Int_t fitID, Int_t runNum, Int_t daq, Int_t pedRate, Int_t dataRate, Int_t chan, Int_t amp, Int_t pmt, Int_t hv, Int_t ll, Int_t filter, Bool_t printSummary = false, Int_t constrainInj = 100, Int_t constrainGain = 0, Int_t constrainLL = 0, Bool_t saveResults = false, Bool_t saveNN = false, Int_t fitEngine = 0, Double_t g0 = 0.0, Double_t mu0 = 0.0){
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	///// SET UP HARD-CODED VALUES PERTAINING TO PMTS AND LIGHT SOURCE
@@ -205,10 +205,8 @@ int fit_pmt_wrapper(string rootFile, Int_t runID, Int_t runNum, Int_t daq, Int_t
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	// Set up initial input values, and lower and upper bounds
+	// Define "off" value
 	Double_t off = -1.0;
-	Int_t low 		= getDataMinMax(rootFile, chan, 0, 2);
-	Int_t high		= getDataMinMax(rootFile, chan, 1, 2);
 	// w - probability of type II background
 	Double_t w0 		= 0.05;
 	Double_t wmin 		= 0.001;
@@ -219,9 +217,14 @@ int fit_pmt_wrapper(string rootFile, Int_t runID, Int_t runNum, Int_t daq, Int_t
 	Double_t pedmax 	= off;
 	// pedrms - rms of pedestal
 	Double_t pedrms0 	= getDataPedSig(rootFile, chan, "pedrms");
-	if (low < ped0 - 10 * pedrms0) low = ped0 - 5 * pedrms0;
+	//if (low < ped0 - 10 * pedrms0) low = ped0 - 5 * pedrms0;
 	Double_t pedrmsmin 	= off;
 	Double_t pedrmsmax 	= off;
+	// Define lowest and highest bin to consider in fit
+	Int_t low 		= getDataMinMax(rootFile, chan, 0, 150); // 150
+	Int_t high		= getDataMinMax(rootFile, chan, 1, 15); // 15
+	//Int_t low = ped0 - 2 * pedrms0;
+	//Int_t high = ped0 + 12 * pedrms0;
 	// alpha - exponential decay rate
 	Double_t alpha0 	= 0.01;
 	Double_t alphamin 	= off;
@@ -349,8 +352,8 @@ int fit_pmt_wrapper(string rootFile, Int_t runID, Int_t runNum, Int_t daq, Int_t
 	}
 	// Call the function with the appropriate params
 	return fit_pmt(
-		rootFile, runID, runNum, daq, chan, amp, dataRate, // 6 params
-		pedRate, hv, ll, filter, saveResults, 		// 5 params
+		rootFile, runID, fitID, runNum, daq, chan, amp, // 7 params
+		dataRate, pedRate, hv, ll, filter, saveResults, // 6 params
 		saveNN, fitEngine, low, high, minPE, maxPE,	// 6 params
 		w0, ped0, pedrms0, alpha0, mu0, 		// 5 params
 		sig0, sigrms0, inj0, real0,			// 4 params
