@@ -58,12 +58,14 @@ int fit_pmt(
 	Int_t filter, 		// Filter used (0 - 8)(0 is closed shutter)
 	// These params can be used to force the function onto solutions
 	// These params are some functionality flags
-	Bool_t saveResults, 	// Save output png with stats
-	Bool_t saveNN, 		// Save neural network output png and txt
+	Int_t saveResults, 	// Save output png with stats
+	Int_t saveNN, 		// Save neural network output png and txt
 	Int_t fitEngine, 	// Switch for choosing minimizing technique
+	Int_t log_scale,	// Switch for displaying png in log scale
 	// The next 2 parameters are the min and max bin to consider in fit
 	Int_t low, 		// Lowest bin to consider in fit
 	Int_t high, 		// Highest bin to consider in fit
+	// The next 2 parameters are the min and max PE peak to consider
 	const int minPE, 	// Lowest #PEs to consider in fit
 	const int maxPE, 	// Highest #PEs to consider in fit
 	//^^ Add const minPe, maxPe
@@ -96,39 +98,6 @@ int fit_pmt(
 	}
 
 	printf("MIN_PE, MAX_PE, NPE  = %d, %d, %d\n", MIN_PE, MAX_PE, NPE);
-
-/* Doesnt work
-	// Set up database for fetching and saving values
-	MYSQL_RES *result;
-	MYSQL_ROW row;
-	MYSQL *connection, mysql;
-
-	const char* server="127.0.0.1";
-	const char* user = "brady";
-	const char* password = "thesis";
-	const char* database = "gaindb";
-
-	int state;
-
-	mysql_init(&mysql);
-	connection = mysql_real_connect(&mysql,server,user,password,database,0,0,0);
-	
-	if (connection == NULL) {
-		printf("Null connection mysql\n");
-		return 1;
-	} 
-	state = mysql_query(connection, "SELECT * FROM exp_params");
-	if (state != 0) {
-		printf("error mysql\n");
-		return 1;
-	}
-
-	result = mysql_store_result(connection);
-	row = mysql_fetch_row(result);
-	
-	mysql_free_result(result);
-	mysql_close(connection);
-*/
 
 	// Pack parameters into nice arrays
 	Double_t initial[9] = {w0, ped0, pedrms0, alpha0, mu0, sig0, sigrms0, inj0, real0};
@@ -367,11 +336,11 @@ int fit_pmt(
 	//sprintf(nnImFile, "fit_pmt_nn__run%d_daq%d_chi%d_time%s.png", runNum, daq, int(chi) / ndf, timestamp);
 
 	// IF SAVING HUMAN OUTPUT IMAGE ...
-	h_QDC->GetYaxis()->SetDefaults();
-	if (saveResults) can->Print(humanImFile);
+	if (log_scale > 0) h_QDC->GetYaxis()->SetLogy();
+	if (saveResults > 0) can->Print(humanImFile);
 
 	// IF SAVING OUTPUT FOR INPUTTING INTO NN ...
-	if (saveNN) {
+	if (saveNN > 0) {
 		// OUTPUT IMAGE FOR NEURAL NETWORK TO USE
 		// (BARE BONES)
 		can->SetFrameFillColor(0);

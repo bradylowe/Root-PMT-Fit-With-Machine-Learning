@@ -13,7 +13,7 @@ Double_t channelsToGain = 25.0 / 160.2; // (25 fC / chan) / (160.2 fC / electron
 // All inputs into fit_pmt.c should be implemented in this function. This function should provide full
 // functionality of fit_pmt.c while also allowing the user to diagnose and test values as well as record
 // and keep track of previous fits to data files.
-int fit_pmt_wrapper(string rootFile, Int_t runID, Int_t fitID, Int_t runNum, Int_t daq, Int_t pedRate, Int_t dataRate, Int_t chan, Int_t amp, Int_t pmt, Int_t hv, Int_t ll, Int_t filter, Bool_t printSummary = false, Int_t constrainInj = 100, Int_t constrainGain = 0, Int_t constrainLL = 0, Bool_t saveResults = false, Bool_t saveNN = false, Int_t fitEngine = 0, Double_t g0 = 0.0, Double_t mu0 = 0.0){
+int fit_pmt_wrapper(string rootFile, Int_t runID, Int_t fitID, Int_t runNum, Int_t daq, Int_t pedRate, Int_t dataRate, Int_t chan, Int_t amp, Int_t pmt, Int_t hv, Int_t ll, Int_t filter, Int_t log_scale = 0, Int_t printSummary = 0, Int_t constrainInj = 100, Int_t constrainGain = 0, Int_t constrainLL = 0, Int_t saveResults = 0, Int_t saveNN = 0, Int_t fitEngine = 0, Double_t g0 = 0.0, Double_t mu0 = 0.0){
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	///// SET UP HARD-CODED VALUES PERTAINING TO PMTS AND LIGHT SOURCE
@@ -54,7 +54,7 @@ int fit_pmt_wrapper(string rootFile, Int_t runID, Int_t fitID, Int_t runNum, Int
 	lightLevels[1][45] = 1.3;
 	lightLevels[1][46] = 1.612;
 	lightLevels[1][47] = 1.931;
-	lightLevels[1][48] = 2.219;
+	lightLevels[1][48] = 2.299;
 	lightLevels[1][49] = 2.626;
 	lightLevels[1][50] = 3.0;
 	lightLevels[1][51] = 3.5;
@@ -221,8 +221,8 @@ int fit_pmt_wrapper(string rootFile, Int_t runID, Int_t fitID, Int_t runNum, Int
 	Double_t pedrmsmin 	= off;
 	Double_t pedrmsmax 	= off;
 	// Define lowest and highest bin to consider in fit
-	Int_t low 		= getDataMinMax(rootFile, chan, 0, 150); // 150
-	Int_t high		= getDataMinMax(rootFile, chan, 1, 15); // 15
+	Int_t low 		= getDataMinMax(rootFile, chan, 0, 1); // 150
+	Int_t high		= getDataMinMax(rootFile, chan, 1, 1); // 15
 	//Int_t low = ped0 - 2 * pedrms0;
 	//Int_t high = ped0 + 12 * pedrms0;
 	// alpha - exponential decay rate
@@ -311,7 +311,7 @@ int fit_pmt_wrapper(string rootFile, Int_t runID, Int_t fitID, Int_t runNum, Int
 		//realmin = real0; realmax = real0;
 	}
 
-	if (printSummary) {
+	if (printSummary > 0) {
 		// Print out to the user a summary of this run and
 		// this fit on this run.
 		printf("  ##  Summary for this fit  ##  \n");
@@ -333,6 +333,7 @@ int fit_pmt_wrapper(string rootFile, Int_t runID, Int_t fitID, Int_t runNum, Int
 		printf("  SaveHuman:%d \n", (int)(saveResults));
 		printf("  SaveNN:   %d \n", (int)(saveNN));
 		printf("  FitEng:   %d \n", fitEngine);
+		printf("  Log scale:%d \n", log_scale);
 		printf("  Fit min:  %d \n", low);
 		printf("  Fit max:  %d \n", high);
 		printf("  minPE:    %d \n", minPE);
@@ -354,7 +355,8 @@ int fit_pmt_wrapper(string rootFile, Int_t runID, Int_t fitID, Int_t runNum, Int
 	return fit_pmt(
 		rootFile, runID, fitID, runNum, daq, chan, amp, // 7 params
 		dataRate, pedRate, hv, ll, filter, saveResults, // 6 params
-		saveNN, fitEngine, low, high, minPE, maxPE,	// 6 params
+		saveNN, fitEngine, log_scale, low, high, 	// 5 params
+		minPE, maxPE,					// 2 params
 		w0, ped0, pedrms0, alpha0, mu0, 		// 5 params
 		sig0, sigrms0, inj0, real0,			// 4 params
 		wmin, pedmin, pedrmsmin, alphamin, mumin, 	// 5 params

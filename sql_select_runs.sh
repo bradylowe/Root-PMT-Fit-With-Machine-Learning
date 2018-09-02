@@ -2,15 +2,19 @@
 # Loop through input params to form condition statement
 if [ $# -eq 0 ] ; then
         # Query database
-        ret=$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; SELECT run_id FROM exp_params ;")
-        echo ${ret}
+        ret=$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; SELECT run_id FROM run_params ;")
+	# Make values comma-separated
+	ret=$(echo ${ret} | sed "s/ /,/g")
         echo ${ret} > run_list.txt
-	echo "$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; SELECT COUNT(run_id) FROM exp_params ;") files selected"
+        echo ${ret}
+	echo "$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; SELECT COUNT(run_id) FROM run_params ;") files selected"
 else
         # Query database
-        ret=$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; SELECT run_id FROM exp_params WHERE $1 ;")
+        ret=$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; SELECT run_id FROM run_params WHERE $1 ;")
+	# Make values comma-separated
+	ret=$(echo ${ret} | sed "s/ /,/g")
         echo ${ret}
 	echo ${ret} > run_list.txt
-	echo "$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; SELECT COUNT(run_id) FROM exp_params WHERE $1 ;") files selected"
+	echo "$(mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; SELECT COUNT(run_id) FROM run_params WHERE $1 ;") files selected"
 fi
 
