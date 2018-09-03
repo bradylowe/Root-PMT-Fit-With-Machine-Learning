@@ -120,3 +120,9 @@ sql_select_runs.sh  -  This script allows the user to take advantage of the run_
                     -  For a list of parameters to use in the conditions, type:
                          ./make_plot.sh help
 ----------------------------------------------------------------------------------------------
+
+run_batch.sh  -  This script is simply executed as ./run_batch.sh (no input arguments)
+              -  This script runs the run_fit_pmt.sh script on a predefined list of run_id's
+                 with predefined input arguments. This is a way to make many different fits
+                 to many different data runs at once.
+----------------------------------------------------------------------------------------------
