@@ -61,10 +61,9 @@ int fit_pmt(
 	Int_t saveResults, 	// Save output png with stats
 	Int_t saveNN, 		// Save neural network output png and txt
 	Int_t fitEngine, 	// Switch for choosing minimizing technique
-	Int_t log_scale,	// Switch for displaying png in log scale
 	// The next 2 parameters are the min and max bin to consider in fit
-	Int_t low, 		// Lowest bin to consider in fit
-	Int_t high, 		// Highest bin to consider in fit
+	Int_t lowRangeThresh,	// Lowest bin must have at least this many counts
+	Int_t highRangeThresh,	// Highest bin must have at least this many counts
 	// The next 2 parameters are the min and max PE peak to consider
 	const int minPE, 	// Lowest #PEs to consider in fit
 	const int maxPE, 	// Highest #PEs to consider in fit
@@ -168,6 +167,10 @@ int fit_pmt(
                 h_QDC->Fill(l1->GetValue());
         }
 
+	// GRAB FIT BOUNDS FROM USER THRESHOLDS
+	Int_t low = h_QDC->FindFirstBinAbove(lowRangeThresh);
+	Int_t high = h_QDC->FindLastBinAbove(highRangeThresh);
+
         // NORMALIZE HISTOGRAM
         Int_t sum = h_QDC->GetSum();
         for (Int_t curBin = 0; curBin < bins; curBin++) {
@@ -219,10 +222,11 @@ int fit_pmt(
 */	
 	// Fit to pedestal
 	TF1 *fit_gaus_ped = new TF1("fit_gaus_ped", "gaus", initial[1] - initial[2], initial[1] + initial[2]);
-	h_QDC->Fit(fit_gaus_ped, "RON", "");
+	h_QDC->Fit(fit_gaus_ped, "RN", "");
+	//h_QDC->Fit(fit_gaus_ped, "RON", "");
 	
 	// Initialize canvas
-	TCanvas *can=new TCanvas("can","can");
+	TCanvas *can = new TCanvas("can","can");
 	can->cd();
 	gStyle->SetOptFit(1);
 	TGaxis::SetMaxDigits(3);
@@ -230,7 +234,7 @@ int fit_pmt(
 	h_QDC->SetMarkerStyle(20);
 	h_QDC->GetXaxis()->SetTitle("QDC channel");
 	h_QDC->GetYaxis()->SetTitle("Normalized yield");
-	h_QDC->Draw("AC");
+	h_QDC->Draw("same");
 
 	// PERFORM FIT, GET RESULTS
 	h_QDC->GetXaxis()->SetRangeUser(low, high);
@@ -328,37 +332,48 @@ int fit_pmt(
         h_QDC->SetTitle(Title);
 
 	// DEFINE USER IMAGE FILE AND NN IMAGE FILE
-	char humanImFile[256];
-	char nnImFile[256];
-	sprintf(humanImFile, "fit_pmt__chi%d_runID%d_fitID%d.png", int(chiPerNDF), runID, fitID);
-	sprintf(nnImFile, "fit_pmt_nn__chi%d_runID%d_fitID%d_gain%d_hv%d_ll%d_fitEngine%d_low%d_high%d.png", int(chiPerNDF), runID, fitID, int(gain * 1000), hv, ll, fitEngine, low, high);
-	//char nnImFile[256];
-	//sprintf(nnImFile, "fit_pmt_nn__run%d_daq%d_chi%d_time%s.png", runNum, daq, int(chi) / ndf, timestamp);
+	char humanPNG[256];
+	char humanLogPNG[256];
+	char nnPNG[256];
+	char nnLogPNG[256];
+	sprintf(humanPNG, "fit_pmt__chi%d_runID%d_fitID%d_log%d.png", int(chiPerNDF), runID, fitID, 0);
+	sprintf(humanLogPNG, "fit_pmt__chi%d_runID%d_fitID%d_log%d.png", int(chiPerNDF), runID, fitID, 1);
+	sprintf(nnPNG, "fit_pmt_nn__chi%d_runID%d_fitID%d_log%d_gain%d_hv%d_ll%d_fitEngine%d_low%d_high%d.png", int(chiPerNDF), runID, fitID, 0, int(gain * 1000), hv, ll, fitEngine, lowRangeThresh, highRangeThresh);
+	sprintf(nnLogPNG, "fit_pmt_nn__chi%d_runID%d_fitID%d_log%d_gain%d_hv%d_ll%d_fitEngine%d_low%d_high%d.png", int(chiPerNDF), runID, fitID, 1, int(gain * 1000), hv, ll, fitEngine, lowRangeThresh, highRangeThresh);
 
 	// IF SAVING HUMAN OUTPUT IMAGE ...
-	if (log_scale > 0) h_QDC->GetYaxis()->SetLogy();
-	if (saveResults > 0) can->Print(humanImFile);
+	if (saveResults > 0) {
+		can->Print(humanPNG);
+		can->SetLogy();
+		can->Update();
+		can->Print(humanLogPNG);
+	}
 
 	// IF SAVING OUTPUT FOR INPUTTING INTO NN ...
 	if (saveNN > 0) {
 		// OUTPUT IMAGE FOR NEURAL NETWORK TO USE
 		// (BARE BONES)
+		can->SetLogy(0);
 		can->SetFrameFillColor(0);
 		can->SetFrameFillStyle(0);
 		can->SetFrameLineColor(0);
 		can->SetFrameBorderMode(0);
-		can->cd();
 		gStyle->SetOptFit(0);
 		gStyle->SetOptStat(0);
 		h_QDC->GetYaxis()->SetLabelSize(0);
 		h_QDC->GetYaxis()->SetTickLength(0);
 		h_QDC->GetXaxis()->SetLabelSize(0);
 		h_QDC->GetXaxis()->SetTickLength(0);
+		h_QDC->GetXaxis()->SetTitle("");
+		h_QDC->GetYaxis()->SetTitle("");
 		h_QDC->SetTitle("");
 		h_QDC->SetMarkerSize(0.7);
 		h_QDC->SetMarkerStyle(20);
 		can->Update();
-	    	can->Print(nnImFile);
+	    	can->Print(nnPNG);
+		can->SetLogy();
+		can->Update();
+		can->Print(nnLogPNG);
 	}
 
 	// Create SQL query for storing all the output of this run in the gaindb
@@ -366,13 +381,13 @@ int fit_pmt(
 	char queryLine[2048];
 	sprintf(queryLine, 
 		"USE gaindb; INSERT INTO fit_results (run_id, fit_engine, fit_low, fit_high, min_pe, max_pe, w_0, ped_0, ped_rms_0, alpha_0, mu_0, sig_0, sig_rms_0, inj_0, real_0, w_min, ped_min, ped_rms_min, alpha_min, mu_min, sig_min, sig_rms_min, inj_min, real_min, w_max, ped_max, ped_rms_max, alpha_max, mu_max, sig_max, sig_rms_max, inj_max, real_max, w_out, ped_out, ped_rms_out, alpha_out, mu_out, sig_out, sig_rms_out, inj_out, real_out, w_out_error, ped_out_error, ped_rms_out_error, alpha_out_error, mu_out_error, sig_out_error, sig_rms_out_error, inj_out_error, real_out_error, chi, gain, gain_error, gain_percent_error, human_png, nn_png, root_file) VALUES('%d', '%d', '%d', '%d', '%d', '%d', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%.4f', '%s', '%s', '%s');",
-		runID, fitEngine, low, high, minPE, maxPE,
+		runID, fitEngine, lowRangeThresh, highRangeThresh, minPE, maxPE,
 		w0, ped0, pedrms0, alpha0, mu0, sig0, sigrms0, inj0, real0,
         	wmin, pedmin, pedrmsmin, alphamin, mumin, sigmin, sigrmsmin, injmin, realmin,
         	wmax, pedmax, pedrmsmax, alphamax, mumax, sigmax, sigrmsmax, injmax, realmax,
         	wout, pedout, pedrmsout, alphaout, muout, sigout, sigrmsout, injout, realout,
         	wouterr, pedouterr, pedrmsouterr, alphaouterr, muouterr, sigouterr, sigrmsouterr, injouterr, realouterr,
-        	chi/double(ndf), gain, gainError, gainPercentError, humanImFile, nnImFile, rootFile.c_str()
+        	chi/double(ndf), gain, gainError, gainPercentError, humanPNG, nnPNG, rootFile.c_str()
 	);
 	file.open("sql_output.txt", std::ofstream::out);
 	if (file.is_open()) {
@@ -382,7 +397,7 @@ int fit_pmt(
 
 
 	// Return chi squared per number of degrees of freedom (floored)
-	return (int)(chi / ndf);
+	return (int)(chiPerNDF);
 }
 
 
