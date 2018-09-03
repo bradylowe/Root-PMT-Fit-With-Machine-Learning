@@ -26,6 +26,7 @@ sql_select_runs.sh -- shell script for sorting runs by expt'l params
 enter_run_params.sh -- shell script for catalouging expt'l setup
 pmt3_injstudy_conGain70_conInj0.png -- example output of fit algorithm
 r410_v965ST_5.root -- example data file (filled histograms)
+run_batch.sh -- shell script for running a batch of instances of run_fit_pmt.sh
 
 Images directory (pngs):
 All pngs are output from Root after it has fit the PMT response model to data.
@@ -37,11 +38,11 @@ Image directories are:
   Development images (dev)
   Testing images (test)
 
-############################################################################################################
-##  MORE DETAILS ABOUT FILES ##
-######################################################
+
+##  MORE DETAILS ABOUT FILES
 
 fit_pmt.c  -  This Root macro defines a 9-parameter mathematical model of a PMT response.
+----------------------------------------------------------------------------------------------
            -  This macro takes in around 50 input parameters which gives the user immense
               control over the parameter-space search, and also allows for highly detailed
               recording of past search attempts and results.
@@ -54,9 +55,11 @@ fit_pmt.c  -  This Root macro defines a 9-parameter mathematical model of a PMT 
               machine learning to the same task. This macro also outptus an SQL query
               into a text file which a shell script (run_fit_pmt.sh) uses to store
               fit input and output in an SQL database.
-----------------------------------------------------------------------------------------------
+              
 
-fit_pmt_wrapper.c  -  This Root macro serves as a bridge between the immense power and detail
+fit_pmt_wrapper.c  -  This Root macro is a little more user-friendly, and it calls fit_pmt.c
+----------------------------------------------------------------------------------------------
+                   -  This macro serves as a bridge between the immense power and detail
                       of fit_pmt.c and the ease of use of run_fit_pmt.sh (described next).
                    -  This macro takes in only 22 parameters that are much more aligned with
                       human concerns such as which run number to use, how much to constrain
@@ -68,11 +71,13 @@ fit_pmt_wrapper.c  -  This Root macro serves as a bridge between the immense pow
                       subject to change (though the gains of the tubes shouldn't change).
                    -  This macro has an option to print a thorough summary of the settings
                       that went into producing this fit.
-----------------------------------------------------------------------------------------------
+                      
 
-run_fit_pmt.sh  -  This shell script is a Cadillac compared to the above C-code.
+run_fit_pmt.sh  -  This script is built for user interface with the fit_pmt_wrapper.c code
+----------------------------------------------------------------------------------------------
                 -  This script takes in an optional 15 input parameters that do not need to
                    be in any certain order.
+                -  This script is a Cadillac compared to the above C-code
                 -  The input param list:
                      gain (initial guess)
                      conGain (constrain gain param 0-100 percent to accepted value)
@@ -100,18 +105,20 @@ run_fit_pmt.sh  -  This shell script is a Cadillac compared to the above C-code.
                 -  Example usage:
                      ./run_fit_pmt.sh fitEngine=1 printSum=true ll=47 conGain=90 savePNG=true
                                       pngFile="nice_montage.png" runs="17 29 49 50 51"
-----------------------------------------------------------------------------------------------
+                                      
 
-enter_run_params.sh  -  This script allows users to record the run parameters of all the
-                        recorded data runs in an SQL database called gaindb.
+enter_run_params.sh  -  This script is used to input expt'l parameters into the SQL database
+----------------------------------------------------------------------------------------------
+                     -  Database is gaindb, table is run_params
                      -  Having all the run parameters recorded in a database is necessary for
                         a sophisticated ananlysis of tons of data.
                      -  Simply execute this shell script and send in run numbers as input
                         parameters (can use hyphens). The script will prompt you to enter
                         the input params one by one and show a default value in parentheses.
-----------------------------------------------------------------------------------------------
+                        
 
 sql_select_runs.sh  -  This script allows the user to take advantage of the run_params table
+----------------------------------------------------------------------------------------------
                        in the gaindb database.
                     -  This script takes in SQL-style conditional arguments and uses them to
                        select a list of run id's from the database that match the conditions.
@@ -119,10 +126,12 @@ sql_select_runs.sh  -  This script allows the user to take advantage of the run_
                          ./sql_select_runs.sh "hv=2000 AND ll>=45 AND ll<=50 AND amp=1"
                     -  For a list of parameters to use in the conditions, type:
                          ./make_plot.sh help
-----------------------------------------------------------------------------------------------
+                         
 
-run_batch.sh  -  This script is simply executed as ./run_batch.sh (no input arguments)
+run_batch.sh  -  This script executes a batch of run_fit_pmt.sh instances
+----------------------------------------------------------------------------------------------
+              -  This script is simply executed as ./run_batch.sh (no input arguments)
               -  This script runs the run_fit_pmt.sh script on a predefined list of run_id's
                  with predefined input arguments. This is a way to make many different fits
                  to many different data runs at once.
-----------------------------------------------------------------------------------------------
+                 
