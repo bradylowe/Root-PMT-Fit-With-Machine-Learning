@@ -1,0 +1,49 @@
+# Neural net models defined here
+
+This directory is where all neural netowrk development takes place. Neural network models are
+defined and trained here for the purpose of classifying the output results of Cern Root fits
+to PMT data as either "good" or "bad" fits to the data. 
+
+This directory stores many jupyter notebooks (*.ipynb) for different purposes such as defining, 
+tuning, training, and evaluating many different neural network models.
+
+We consider many convolutional models that look at input png files stored in the ../images 
+directory. We can train any of our convolutional models on log-scale output or regular linear
+output. To take advantage of the different information present in both types of images, we
+train both types of models independently or merged in some hybrid model. 
+
+Each model has access (through mysql tables) to all the experimental run parameters for each
+data run, all the input parameters sent into the given fitting algorithm, and all the resulting
+outpt (parameters, param errors, chi-square, gain measurement). 
+
+Trained models are stored in the "trained" folder.
+
+
+## LIST OF FILES
+
+nn_utils.py  -  This python file contains custom code used for connecting to the mysql 
+                database (gaindb), loading info from database, loading images from disc,
+                etc. for the purpose of connecting our dataset to our neural networks.
+
+fit_pmt_conv.ipynb  -  This jupyter notebook is the most general definition of a convolutional
+                       model for our dataset. 
+                    -  From within this notebook, we can load our dataset, define a conv model
+                       from scratch, train the model, and do some simple model evaluation.
+                    -  We can load old models here for retraining or modifying.
+                    -  We can save our models created here for use later.
+                    -  Usually, to travel further down a branch and study a certain conv model
+                       in depth, we start with this notebook and create a new notebook such as:
+                        -  fit_pmt_conv_two_model_separate.ipynb
+                        -  fit_pmt_conv_two_model_hybrid.ipynb
+                        -  fit_pmt_conv_chi.ipynb
+                        -  fit_pmt_conv_all_info.ipynb
+
+dataset_interface.ipynb  -  Like the name suggests, this jupyter notebook allows us to modify
+                            our datasets however we may need.
+                         -  We can view any dataset we want (load images/data and print)
+                         -  We can load any trained models we want and use them to help us sort
+                            through our dataset to find mislabeled images
+                         -  We can parse and classify "similarities" or "differences" between
+                            our data points or our data sets.
+
+classify_dataset.ipynb  -  This notebook allows us to use a trained model to classify data.
