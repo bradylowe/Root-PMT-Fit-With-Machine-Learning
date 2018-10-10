@@ -46,6 +46,7 @@ The pngs do not have axes, words, numbers, or tick marks.
 The pngs have black data points, cyan pedestal fit, red photo-electron fits, and a blue total fit.
 The pngs are labeled based on whether or not the images appears to represent a "good" fit to the data.
 Some pngs are linear scale on y axis, some are log scale (log0 or log1 in filename)
+
 Separation of images (train, dev, test):
 
 	- Development set images are images where run_id % 10 == 0
