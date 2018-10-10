@@ -1,0 +1,61 @@
+# Description of files
+
+
+enter_run_params.sh  -  script for storing by hand run parameters into database from new data
+-----------------------------------------------------------------------------------------------
+                     -  This script allows users to enter the run parameters corresponding to 
+                        all the data runs (.root) in the current directory. The information
+                        entered is stored in an SQL database called gaindb in table run_params.
+                     -  Having all the run parameters recorded in a database is necessary for
+                        a sophisticated ananlysis of tons of data.
+                     -  Simply execute this shell script and send in run numbers as input
+                        parameters (can use hyphens). The script will prompt you to enter
+                        the input params one by one and show a default value in parentheses.
+                     -  After the run parameters have been stored, the script moves the root
+                        file into the dir_processed_data directory for permanent storage.
+
+
+sql_select_runs.sh  -  script for querying database for run_ids
+-----------------------------------------------------------------------------------------------
+                    -  This script allows the user to take advantage of the run_params table
+                       in the gaindb database.
+                    -  This script takes in SQL-style conditional arguments and uses them to
+                       select a list of run id's from the database that match the conditions.
+                    -  The list of selected run_ids is stored in the file selected_runs.txt.
+                    -  Example usage:
+                         ./sql_select_runs.sh "hv=2000 AND ll>=45 AND ll<=50 AND amp=1"
+                    -  For a list of parameters to use in the conditions, type:
+                         ./make_plot.sh help
+
+
+sql_select_fits.sh  -  script very much like sql_select_runs.sh
+-----------------------------------------------------------------------------------------------
+                    -  This script takes in one or two parameters. If just one, then it is
+                       a conditional statement for fit_results table. If two, then the first
+                       condition pertains to run_params table, the second to fit_results.
+                    -  This script stores a list of fit_ids in selected_fits.txt.
+                    -  Example:  
+                         ./sql_select_fits.sh "hv=2000 AND ll>=45" "chi < 2 AND gain > 0"
+
+
+sql_select_pngs.sh  -  script very much like sql_select_runs.sh
+-----------------------------------------------------------------------------------------------
+                    -  This script takes in two parameters, stores a list of png filenames
+                       in the file called selected_pngs.txt.
+                    -  An optional third parameter will choose whether to view linear scale
+                       plots, log scale (y-axis), or both images at once.
+                    -  Example: 
+                         ./sql_select_pngs.sh "hv=2000 AND ll>=45" "chi < 2 AND gain > 0" linear
+                         ./sql_select_pngs.sh "hv=2000 AND ll>=45" "" log
+
+
+view_selected_pngs.sh  -  This script takes no args and displays pngs from selected_pngs.txt
+-----------------------------------------------------------------------------------------------
+
+
+sql_make_plot.sh  -  script for making plots via root from mysql database contents
+-----------------------------------------------------------------------------------------------
+                  -  This script calls the root macro make_plot.c which takes in a list of
+                     (x, y) ordered pairs and plots them in a simple TGraph.
+                  -  This script takes in 4 or 5 arguments. The first two arguments are the
+                     user's choice of x and y axis.
