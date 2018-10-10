@@ -47,7 +47,7 @@ The pngs have black data points, cyan pedestal fit, red photo-electron fits, and
 The pngs are labeled based on whether or not the images appears to represent a "good" fit to the data.
 Some pngs are linear scale on y axis, some are log scale (log0 or log1 in filename)
 Separation of images (train, dev, test):
-	* Development set images are images where run_id % 10 == 0
-	* Testing set images have run_id % 10 == 1
-	* Training set images have run_id % 10 > 1
+	** Development set images are images where run_id % 10 == 0
+	** Testing set images have run_id % 10 == 1
+	** Training set images have run_id % 10 > 1
 
