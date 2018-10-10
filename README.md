@@ -13,11 +13,11 @@ The gaindb.sql file is a backup of the mysql database used.
 
 ## List of directories and their contents:
 1)  database_tools -- Shell scripts and other code for looking at all collected info
-	a)  labelmaker.sh -- shell script for labeling fit_pmt output images (good/bad)
-	b)  enter_run_params.sh -- script for inserting run parameters of new data
-	c)  make_plot* -- collection of files used for making plots from mysql database
-	d)  sql_select* -- collection of files for querying mysql database
-	e)  *.txt -- files output from macros (only macros look at these files)
+	1)  labelmaker.sh -- shell script for labeling fit_pmt output images (good/bad)
+	2)  enter_run_params.sh -- script for inserting run parameters of new data
+	3)  make_plot* -- collection of files used for making plots from mysql database
+	4)  sql_select* -- collection of files for querying mysql database
+	5)  *.txt -- files output from macros (only macros look at these files)
 2)  docs -- Contains some pdfs explaining PMT gain measurements and analysis
 	a)  new_pmt_response_jlab.pdf -- multi-stage fit_pmt model
 	b)  NIM_A339_468_PMT_Calibration.pdf -- this defines fit_pmt algorithm
