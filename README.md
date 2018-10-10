@@ -13,29 +13,29 @@ The gaindb.sql file is a backup of the mysql database used.
 
 ## List of directories and their contents:
 1)  database_tools -- Shell scripts and other code for looking at all collected info
-	a)  labelmaker.sh -- shell script for labeling fit_pmt output images (good/bad)
-	b)  enter_run_params.sh -- script for inserting run parameters of new data
-	c)  make_plot* -- collection of files used for making plots from mysql database
-	d)  sql_select* -- collection of files for querying mysql database
-	e)  *.txt -- files output from macros (only macros look at these files)
+	1)  labelmaker.sh -- shell script for labeling fit_pmt output images (good/bad)
+	2)  enter_run_params.sh -- script for inserting run parameters of new data
+	3)  make_plot* -- collection of files used for making plots from mysql database
+	4)  sql_select* -- collection of files for querying mysql database
+	5)  *.txt -- files output from macros (only macros look at these files)
 2)  docs -- Contains some pdfs explaining PMT gain measurements and analysis
-	a)  new_pmt_response_jlab.pdf -- multi-stage fit_pmt model
-	b)  NIM_A339_468_PMT_Calibration.pdf -- this defines fit_pmt algorithm
-	c)  pmt_sim_tilecal-99-012.pdf -- monte carlo simulation of pmt stages
-	d)  recent_1-s2.0-S016890021730311X-main.pdf -- pmt-independent model
-	e)  rpp2014-rev-probability.pdf -- this gives detailed statistics explanation
+	1)  new_pmt_response_jlab.pdf -- multi-stage fit_pmt model
+	2)  NIM_A339_468_PMT_Calibration.pdf -- this defines fit_pmt algorithm
+	3)  pmt_sim_tilecal-99-012.pdf -- monte carlo simulation of pmt stages
+	4)  recent_1-s2.0-S016890021730311X-main.pdf -- pmt-independent model
+	5)  rpp2014-rev-probability.pdf -- this gives detailed statistics explanation
 3)  nn_models -- Contains jupyter notebook for implementing neural nets
-	a)  fit_pmt_conv* -- jupyter notebooks for defining and training conv nets
-	b)  nn_utils.py -- custom python functions for loading dataset and other NN things 
-	c)  dataset_interface.ipynb -- jupyter nb for evaluating/changing data sets
-	d)  trained -- directory containing trained models
+	1)  fit_pmt_conv* -- jupyter notebooks for defining and training conv nets
+	2)  nn_utils.py -- custom python functions for loading dataset and other NN things 
+	3)  dataset_interface.ipynb -- jupyter nb for evaluating/changing data sets
+	4)  trained -- directory containing trained models
 4)  root_fit_algorithm -- This is where Root macros live and work.
-	a)  fit_pmt.c -- hardcore math (Root) for fitting histograms to functions
-	b)  fit_pmt_wrapper.c -- human callable wrapper for using fit_pmt.c
-	c)  run_fit_pmt.sh -- shell script for easy use of the fit_pmt algorithm
-	d)  run_batch.sh -- shell script for running run_fit_pmt many times
-	e)  dataAnalyzer.c -- some user-defined functions for fit_pmt algorithm and other
-	f)  pedestalFit* -- files for analyzing the background noise of our setup
+	1)  fit_pmt.c -- hardcore math (Root) for fitting histograms to functions
+	2)  fit_pmt_wrapper.c -- human callable wrapper for using fit_pmt.c
+	3)  run_fit_pmt.sh -- shell script for easy use of the fit_pmt algorithm
+	4)  run_batch.sh -- shell script for running run_fit_pmt many times
+	5)  dataAnalyzer.c -- some user-defined functions for fit_pmt algorithm and other
+	6)  pedestalFit* -- files for analyzing the background noise of our setup
 5)  images -- Here we store a few images for you to use for testing code
 6)  data -- Here we store a few data runs for you to use for testing code
 
@@ -47,7 +47,7 @@ The pngs have black data points, cyan pedestal fit, red photo-electron fits, and
 The pngs are labeled based on whether or not the images appears to represent a "good" fit to the data.
 Some pngs are linear scale on y axis, some are log scale (log0 or log1 in filename)
 Separation of images (train, dev, test):
-	- Development set images are images where run_id % 10 == 0
-	- Testing set images have run_id % 10 == 1
-	- Training set images have run_id % 10 > 1
+	1) Development set images are images where run_id % 10 == 0
+	2) Testing set images have run_id % 10 == 1
+	3) Training set images have run_id % 10 > 1
 
