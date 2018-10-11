@@ -179,3 +179,37 @@ int getDataMinMax(string rootFile, Int_t qCh, Int_t minmax = 0, Int_t limit = 1)
 	if (minmax == 0) return rawData->FindFirstBinAbove(limit);
 	else return rawData->FindLastBinAbove(limit);
 }
+
+
+// This function takes in a histogram and writes the values to a file.
+// The file will have num_bins lines in it, each line with a single integer (bin content).
+// The file is called <rootfile name>.root.hist
+void writeHistToFile(TH1F *hist, const char* rootFile, Int_t bins) {
+
+	// Get number of leading zeros
+        Int_t leadingZeros = 0;
+        while (hist->GetBinContent(leadingZeros) == 0)
+                leadingZeros++;
+
+        // Get number of trailing zeros
+        Int_t trailingZeros = 0;
+        while (hist->GetBinContent(bins - trailingZeros - 1) == 0)
+                trailingZeros++;
+
+        // Write histogram to file
+        ofstream file;
+        file.open(Form("%s.hist", rootFile), std::ofstream::out);
+        if (file.is_open()) {
+		// Print first number of leading and trailing zeros
+                file << leadingZeros << " leading zeros" << endl;
+                file << trailingZeros << " trailing zeros" << endl;
+		// Now, loop through signal and print values
+                for (Int_t ii = leadingZeros; ii < bins - trailingZeros; ii++) {
+                        file << hist->GetBinContent(ii) << endl;
+                }
+		// Close the file
+                file.close();
+        } else printf("\nUnable to write histogram values to file for %s.\n", rootFile);
+	return;
+}
+

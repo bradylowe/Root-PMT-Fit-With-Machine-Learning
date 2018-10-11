@@ -180,7 +180,7 @@ for cur_id in ${run_list} ; do
 		rootOptions="-l"
 	fi
 	# Fit the data, grab chi squared per ndf
-	chi2=$(root ${rootOptions} "fit_pmt_wrapper.c(\"${15}\", ${cur_id}, ${fitID}, $2, $3, ${11}, ${10}, $5, $7, $8, $9, ${12}, ${13}, ${low}, ${high}, ${printSum}, ${conInj}, ${conGain}, ${conLL}, ${savePNG}, ${saveNN}, ${fitEngine})")
+	chi2=$(root ${rootOptions} "fit_pmt_wrapper.c(\"${data_dir}/${15}\", ${cur_id}, ${fitID}, $2, $3, ${11}, ${10}, $5, $7, $8, $9, ${12}, ${13}, ${low}, ${high}, ${printSum}, ${conInj}, ${conGain}, ${conLL}, ${savePNG}, ${saveNN}, ${fitEngine})")
 	if [ ${printSum} -gt 0 ] ; then
 		echo ${chi2}
 	fi

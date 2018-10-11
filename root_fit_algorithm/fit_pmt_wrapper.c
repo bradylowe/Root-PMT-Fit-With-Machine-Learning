@@ -258,7 +258,7 @@ int fit_pmt_wrapper(string rootFile, Int_t runID, Int_t fitID, Int_t runNum, Int
 	Double_t pedrmsmin 	= off;
 	Double_t pedrmsmax 	= off;
 	// alpha - exponential decay rate
-	Double_t alpha0 	= 0.01;
+	Double_t alpha0 	= 0.018;
 	Double_t alphamin 	= off;
 	Double_t alphamax 	= off;
 	// mu - average # of PE's per event
