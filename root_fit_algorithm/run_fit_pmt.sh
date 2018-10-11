@@ -5,8 +5,7 @@
 #################################################################
 # This script will call a root analyzer for every data run in
 # the current directory with a .root file associated 
-# with it. A png will be output for each data file, and all 
-# the png's will be montaged together (single copies deleted).
+# with it. PNGs will be output for each data file.  
 ##################################################################
 
 ########################
@@ -63,9 +62,6 @@ for item in $* ; do
 	# Percent pedInj is allowed to vary
 	elif [[ ${name} == "conInj" ]] ; then
 		conInj=${val}
-	# PNG Filename
-	elif [[ ${name} == "pngFile" ]] ; then
-		pngFile=${val}
 	# Root Filename (if null, all will be used)
 	elif [[ ${name} == "rootFile" ]] ; then
 		rootFile=${val}
@@ -78,9 +74,6 @@ for item in $* ; do
 	# Fit engine option choice (integer)
 	elif [[ ${name} == "fitEngine" ]] ; then
 		fitEngine=${val}
-	# Tile option to use for montage
-	elif [[ ${name} == "tile" ]] ; then
-		tile=${val}
 	# Print summary of this fit to screen (true/false)
 	elif [[ ${name} == "printSum" ]] ; then
 		printSum=${val}
@@ -136,20 +129,6 @@ fi
 if [ ${#saveNN} -eq 0 ] ; then
 	saveNN=0
 fi
-# Make sure this file ends in .png
-if [ ${#pngFile} -gt 0 ] ; then
-	ext=$(echo ${pngFile} | awk -F'.' '{print $NF}')
-	if [ ${#ext} -eq 0 ] ; then
-		echo "${pngFile} has no extension"
-		exit
-	fi
-	if [[ ${ext} != "png" ]] ; then
-		echo "${pngFile} does not end in .png"
-		exit
-	fi
-else
-	pngFile="montage.png"
-fi
 # Initialize fitEngine selection
 if [ ${#fitEngine} -eq 0 ] ; then
 	fitEngine=0
@@ -183,8 +162,6 @@ fi
 
 
 # Initialize lists for loop
-montage_linear=""
-montage_log=""
 # Loop through all files in list, run macro to create png and numbers each time
 for cur_id in ${run_list} ; do
 
@@ -216,18 +193,15 @@ for cur_id in ${run_list} ; do
 	if [ ${savePNG} -eq 1 ] ; then
 		# Grab the freshly-made png filename from this directory
 		png=$(ls fit_pmt__chi*_runID${1}_fitID${fitID}_log0*.png)
-		# Append it to the list
-		montage_linear="${montage_linear} ${png}"
 		# Get the corresponding log plot filename 
 		logpng=$(echo ${png} | sed 's/log0/log1/g')
-		# Append to list of log plots
-		montage_log="${montage_log} ${logpng}" 
 		# Create filename for linear/log montage for this fit_id
 		bothpng=$(echo ${png} | sed 's/log0/logX/g')
 		# Create the montage
 		montage -label "%f" -frame 5 -geometry 500x400+1+1 ${png} ${logpng} ${bothpng}
 		# Move the images to the appropriate directories
-		mv ${png} ${logpng} ${bothpng} ${im_dir}/png_fit/.
+		mv ${bothpng} ${im_dir}/png_fit/.
+		rm ${png} ${logpng}
 	fi
 
 	# Repeat the above process for neural network style images (fewer steps necessary)
@@ -245,10 +219,10 @@ for cur_id in ${run_list} ; do
 		query="USE gaindb; UPDATE fit_results SET $(head -n 1 ${sqlfile})"
 		# If we are saving png output, update database with absolute file path
 		if [ ${savePNG} -gt 0 ] ; then
-			query="${query},human_png='${im_dir}/png_fit/${png}'"
+			query="${query},human_png='${bothpng}'"
 		fi 
 		if [ ${saveNN} -gt 0 ] ; then
-			query="${query},nn_png='${im_dir}/png_fit_nn/${nnpng}'"
+			query="${query},nn_png='${nnpng}'"
 		fi 
 		query="${query} WHERE fit_id=${fitID};"
 		# We don't want anything that is "not a number"
@@ -259,7 +233,7 @@ for cur_id in ${run_list} ; do
 			rm ${sqlfile}
 		# If there was an error with this query, drop the row from the table
 		else
-			mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; DELETE FROM fit_results  WHERE fit_id=${fitID};"
+			mysql --defaults-extra-file=~/.mysql.cnf -Bse "USE gaindb; DELETE FROM fit_results WHERE fit_id=${fitID};"
 		fi
 	fi
 
@@ -268,24 +242,4 @@ for cur_id in ${run_list} ; do
 		break
 	fi
 done
-
-# Label each image with filename, create tile for each image,
-# use frame, and make appropriate size for viewing
-montageOptions="-label '%f' -frame 5 -geometry 500x400+1+1"
-if [ ${#tile} -gt 0 ] ; then
-	montageOptions="${montageOptions} -tile ${tile}" 
-fi
-
-# Create any desired montages
-if [ ${savePNG} -eq 1 ] ; then
-	# Make log-scale montage name from regular montage name.
-	pngLogFile="${pngFile%.png}_log.png"
-	# Make montage from created pngs in the directory where they are.
-	cd ${im_dir}/png_fit
-	montage ${montageOptions} ${montage_linear} ${im_dir}/montages/${pngFile}
-	montage ${montageOptions} ${montage_log} ${im_dir}/montages/${pngLogFile}
-	cd ..
-	# Print this line so the user can easily view the montage.
-	echo eog ${im_dir}/montages/${pngFile}
-fi
 
