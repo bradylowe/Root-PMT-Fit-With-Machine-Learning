@@ -282,81 +282,6 @@ def load_dataset_mysql(m=-1, return_filenames=False, im_dir="train", log=False):
 
 ####################################################################################
 
-def load_dataset_all(m=-1, im_dir="train", log=False):
-
-    # Define condition for selecting train, dev, test set.
-    # For dev, fit_id % 10 == 0
-    # For test, fit_id % 10 == 1
-    if (im_dir == "train"):
-        im_dir = "MOD(run_id, 10) > 1;"
-    elif (im_dir == "dev"):
-        im_dir = "MOD(run_id, 10) = 0;"
-    elif (im_dir == "test"):
-        im_dir = "MOD(run_id, 10) = 1;"
-    else:
-        print("im_dir entry not valid")
-        return 0
-
-    # DEFINE IMAGE DIMENSIONS
-    scale = 4
-    wpx, hpx = 87 * scale, 59 * scale
-
-    # Connect to mysql database
-    import mysql.connector
-    gaindb = mysql.connector.connect(
-        host='localhost', user='brady',
-        password='thesis', database='gaindb'
-    )
-
-    # Query database
-    data = gaindb.cursor()
-    data.execute("SELECT * FROM fit_results WHERE nn_png IS NOT NULL AND label IS NOT NULL AND label<2 AND " + im_dir)
-
-    # Grab pngs from file, create lists
-    images = []
-    labels = []
-    filenames = []
-    params=[]
-    for (fit_id, run_id, fit_engine, fit_low, fit_high, min_pe, max_pe, w_0, ped_0, ped_rms_0, alpha_0, mu_0, sig_0, sig_rms_0, inj_0, real_0, w_min, ped_min, ped_rms_min, alpha_min, mu_min, sig_min, sig_rms_min, inj_min, real_min, w_max, ped_max, ped_rms_max, alpha_max, mu_max, sig_max, sig_rms_max, inj_max, real_max, w_out, ped_out, ped_rms_out, alpha_out, mu_out, sig_out, sig_rms_out, inj_out, real_out, w_out_error, ped_out_error, ped_rms_out_error, alpha_out_error, mu_out_error, sig_out_error, sig_rms_out_error, inj_out_error, real_out_error, chi, gain, gain_error, gain_percent_error, _, filename, label) in data:
-        # Change the filename if log plot
-        if log:
-            filename = filename.replace("log0", "log1")
-        # Save the filename
-        filenames.append(filename)
-        # Read in image to array
-        cur_png = misc.imread(filename)
-        # Reduce resolution and append to list
-        images.append(misc.imresize(cur_png, (hpx, wpx)))
-        # Append other values to their lists
-        labels.append(label)
-        # Grab parameters into a list and append it to list
-        param=[fit_engine, fit_low, fit_high, min_pe, max_pe, w_0, ped_0, ped_rms_0, alpha_0, mu_0, sig_0, sig_rms_0, inj_0, real_0, w_min, ped_min, ped_rms_min, alpha_min, mu_min, sig_min, sig_rms_min, inj_min, real_min, w_max, ped_max, ped_rms_max, alpha_max, mu_max, sig_max, sig_rms_max, inj_max, real_max, w_out, ped_out, ped_rms_out, alpha_out, mu_out, sig_out, sig_rms_out, inj_out, real_out, w_out_error, ped_out_error, ped_rms_out_error, alpha_out_error, mu_out_error, sig_out_error, sig_rms_out_error, inj_out_error, real_out_error, chi, gain, gain_error, gain_percent_error]
-        params.append(param)
-	
-        # Exit the loop if we hit the limit
-        if m != -1 and len(labels) >= m:
-            break
-
-    # Convert all gathered info into arrays
-    images = np.asarray(images)
-    labels = np.asarray(labels)
-    params = np.asarray(params)
-
-    # Find out how many images were loaded
-    m = images.shape[0]
-
-    # Invert and normalize images
-    images = (255. - images) / 255.
-
-    # Reshape labels
-    labels = labels.reshape(m, 1)
-    params = params.reshape(m, params.shape[1], 1)
-
-    # Return values
-    return images, labels, params
-
-####################################################################################
-
 # This function will display images on screen
 def print_mislabeled_images(X, Y, predictions):
     # get size of image
@@ -410,3 +335,78 @@ def print_bad_images(X, predictions, fnames):
 
 ####################################################################################
 
+def load_dataset_all(m=-1, im_dir="train", log=False, im_path=""):
+
+    # Define condition for selecting train, dev, test set.
+    # For dev, fit_id % 10 == 0
+    # For test, fit_id % 10 == 1
+    if (im_dir == "train"):
+        im_dir = "MOD(run_id, 10) > 1;"
+    elif (im_dir == "dev"):
+        im_dir = "MOD(run_id, 10) = 0;"
+    elif (im_dir == "test"):
+        im_dir = "MOD(run_id, 10) = 1;"
+    else:
+        print("im_dir entry not valid")
+        return 0
+
+    # DEFINE IMAGE DIMENSIONS
+    scale = 4
+    wpx, hpx = 87 * scale, 59 * scale
+
+    # Connect to mysql database
+    import mysql.connector
+    gaindb = mysql.connector.connect(
+        host='localhost', user='brady',
+        password='thesis', database='gaindb'
+    )
+
+    # Query database
+    data = gaindb.cursor()
+    data.execute("SELECT * FROM fit_results WHERE nn_png IS NOT NULL AND label IS NOT NULL AND label<2 AND " + im_dir)
+
+    # Grab pngs from file, create lists
+    images = []
+    labels = []
+    filenames = []
+    params=[]
+    for (fit_id, run_id, fit_engine, fit_low, fit_high, min_pe, max_pe, w_0, ped_0, ped_rms_0, alpha_0, mu_0, sig_0, sig_rms_0, inj_0, real_0, w_min, ped_min, ped_rms_min, alpha_min, mu_min, sig_min, sig_rms_min, inj_min, real_min, w_max, ped_max, ped_rms_max, alpha_max, mu_max, sig_max, sig_rms_max, inj_max, real_max, w_out, ped_out, ped_rms_out, alpha_out, mu_out, sig_out, sig_rms_out, inj_out, real_out, w_out_error, ped_out_error, ped_rms_out_error, alpha_out_error, mu_out_error, sig_out_error, sig_rms_out_error, inj_out_error, real_out_error, chi, gain, gain_error, gain_percent_error, _, filename, label) in data:
+        # Change the filename if log plot
+        if log:
+            filename = filename.replace("log0", "log1")
+	# Append path
+        filename = im_path + filename
+        # Save the filename
+        filenames.append(filename)
+        # Read in image to array
+        cur_png = misc.imread(filename)
+        # Reduce resolution and append to list
+        images.append(misc.imresize(cur_png, (hpx, wpx)))
+        # Append other values to their lists
+        labels.append(label)
+        # Grab parameters into a list and append it to list
+        param=[fit_engine, fit_low, fit_high, min_pe, max_pe, w_0, ped_0, ped_rms_0, alpha_0, mu_0, sig_0, sig_rms_0, inj_0, real_0, w_min, ped_min, ped_rms_min, alpha_min, mu_min, sig_min, sig_rms_min, inj_min, real_min, w_max, ped_max, ped_rms_max, alpha_max, mu_max, sig_max, sig_rms_max, inj_max, real_max, w_out, ped_out, ped_rms_out, alpha_out, mu_out, sig_out, sig_rms_out, inj_out, real_out, w_out_error, ped_out_error, ped_rms_out_error, alpha_out_error, mu_out_error, sig_out_error, sig_rms_out_error, inj_out_error, real_out_error, chi, gain, gain_error, gain_percent_error]
+        params.append(param)
+	
+        # Exit the loop if we hit the limit
+        if m != -1 and len(labels) >= m:
+            break
+
+    # Convert all gathered info into arrays
+    images = np.asarray(images)
+    labels = np.asarray(labels)
+    params = np.asarray(params)
+
+    # Find out how many images were loaded
+    m = images.shape[0]
+
+    # Invert and normalize images
+    images = (255. - images) / 255.
+
+    # Reshape labels
+    labels = labels.reshape(m, 1)
+
+    # Return values
+    return images, labels, params
+
+####################################################################################
