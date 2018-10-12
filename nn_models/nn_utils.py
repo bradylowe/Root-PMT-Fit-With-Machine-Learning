@@ -7,7 +7,6 @@ from PIL import Image
 ####################################################################################
 
 def load_dataset_old(m=-1, return_filenames=False, im_dir="train", log=False):
-    # DEFINE IMAGE DIMENSIONS
     scale = 4
     wpx, hpx = 87 * scale, 59 * scale
 
@@ -335,7 +334,7 @@ def print_bad_images(X, predictions, fnames):
 
 ####################################################################################
 
-def load_dataset_all(m=-1, im_dir="train", log=False, im_path=""):
+def load_dataset_all(m=-1, im_dir="train", log=False, im_path="", im_shrink = True):
 
     # Define condition for selecting train, dev, test set.
     # For dev, fit_id % 10 == 0
@@ -351,7 +350,10 @@ def load_dataset_all(m=-1, im_dir="train", log=False, im_path=""):
         return 0
 
     # DEFINE IMAGE DIMENSIONS
-    scale = 4
+    if im_shrink == True:
+        scale = 4
+    else:
+        scale = 16
     wpx, hpx = 87 * scale, 59 * scale
 
     # Connect to mysql database
