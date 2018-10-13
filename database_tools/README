@@ -13,6 +13,7 @@ enter_run_params.sh  -  script for storing by hand run parameters into database 
                         the input params one by one and show a default value in parentheses.
                      -  After the run parameters have been stored, the script moves the root
                         file into the dir_processed_data directory for permanent storage.
+                     -  Usage:  ./enter_run_params.sh
 
 
 sql_select_runs.sh  -  script for querying database for run_ids
@@ -22,7 +23,7 @@ sql_select_runs.sh  -  script for querying database for run_ids
                     -  This script takes in SQL-style conditional arguments and uses them to
                        select a list of run id's from the database that match the conditions.
                     -  The list of selected run_ids is stored in the file selected_runs.txt.
-                    -  Example usage:
+                    -  Usage:
                          ./sql_select_runs.sh "hv=2000 AND ll>=45 AND ll<=50 AND amp=1"
                     -  For a list of parameters to use in the conditions, type:
                          ./make_plot.sh help
@@ -34,7 +35,7 @@ sql_select_fits.sh  -  script very much like sql_select_runs.sh
                        a conditional statement for fit_results table. If two, then the first
                        condition pertains to run_params table, the second to fit_results.
                     -  This script stores a list of fit_ids in selected_fits.txt.
-                    -  Example:  
+                    -  Usage:  
                          ./sql_select_fits.sh "hv=2000 AND ll>=45" "chi < 2 AND gain > 0"
 
 
@@ -44,18 +45,33 @@ sql_select_pngs.sh  -  script very much like sql_select_runs.sh
                        in the file called selected_pngs.txt.
                     -  An optional third parameter will choose whether to view linear scale
                        plots, log scale (y-axis), or both images at once.
-                    -  Example: 
+                    -  Usage: 
                          ./sql_select_pngs.sh "hv=2000 AND ll>=45" "chi < 2 AND gain > 0" linear
                          ./sql_select_pngs.sh "hv=2000 AND ll>=45" "" log
 
 
 view_selected_pngs.sh  -  This script takes no args and displays pngs from selected_pngs.txt
 -----------------------------------------------------------------------------------------------
+                       -  In order for this to work, you must first run sql_select_pngs.sh to
+                          create selected_pngs.txt file in the directory where you run view_
+                       -  Usage:  ./view_selected_pngs.sh
 
 
 sql_make_plot.sh  -  script for making plots via root from mysql database contents
 -----------------------------------------------------------------------------------------------
                   -  This script calls the root macro make_plot.c which takes in a list of
                      (x, y) ordered pairs and plots them in a simple TGraph.
-                  -  This script takes in 4 or 5 arguments. The first two arguments are the
-                     user's choice of x and y axis.
+                  -  This script reads a list of run_ids from selected_runs.txt which is 
+                     created by calling the sql_select_runs.sh script
+                  -  This script takes in 4 or 5 arguments. 
+                     -  The first two arguments are the user's choice of x and y axis 
+                        (these can be any numerical column from either the run_params table or 
+                        the fit_results table in the gaindb database)
+                     -  The third argument is the sql CONDITION statement for filtering which
+                        entries to grab from run_params table
+                     -  The fourth argument is the sql CONDITION statement for filtering which
+                        entries to grab from fit_results table
+                     -  The fifth optional parameter allows multiple runs to be stored in .txt
+                        files for execution later with make_plot_color.c
+                  -  Usage:  ./sql_make_plot.sh help (this prints a list of all possible plot axes)
+                  -  Usage:  ./sql_make_plot.sh hv gain "hv >= 1800 AND pmt=1" "chi < 2 AND gain > 0"
