@@ -9,7 +9,16 @@ mysql database, and python code for neural network models used in data analysis.
 The *.c and *.root files are Root (c++ interpreter) code.
 The *.sh files are Linux shell scripts.
 The *.ipynb are Jupyter notebook files.
-The gaindb.sql file is a backup of the mysql database used.
+The gaindb.sql file is a backup of the mysql database used
+
+## Dependencies
+Linux (linux bash shell scripts are used here)
+Cern Root C++ interpreter - check it out [here](https://root.cern.ch/building-root)
+  - also need c++ compilers and such for this
+MySQL - check it out [here](https://dev.mysql.com/doc/refman/8.0/en/installing.html)
+Python3 (Tensorflow, Keras, IPython, Jupyter, PIL, matplotlib, scipy, mysql-connector)
+
+-----------------------------------------------------------------------
 
 ## List of directories and their contents:
 1)  database_tools -- Shell scripts and other code for looking at all collected info
