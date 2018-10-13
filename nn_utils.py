@@ -6,103 +6,6 @@ from PIL import Image
 
 ####################################################################################
 
-def load_dataset_old(m=-1, return_filenames=False, im_dir="train", log=False):
-    scale = 4
-    wpx, hpx = 87 * scale, 59 * scale
-
-    # INITIALIZE STORAGE
-    images = []
-    labels = []
-    filenames = []
-
-    # Loop over all images in directory (up to m)
-    path = "*images/*" + im_dir + "/*"
-    for image_path in glob.glob(path):
-        # Change the filename if log plot
-        if log:
-            image_path = image_path.replace("log0", "log1")
-        # Save the filename
-        filenames.append(image_path)
-        # Read in image to array
-        cur_png = misc.imread(image_path)
-        # Reduce resolution and append to list
-        images.append(misc.imresize(cur_png, (hpx, wpx)))
-        # Grab the label off the end of the filename
-        labels.append(int(image_path[-5]))
-        # Exit the loop if we hit the limit
-        if m != -1 and len(labels) >= m:
-            break
-
-    # Convert all gathered info into arrays
-    images = np.asarray(images)
-    labels = np.asarray(labels)
-
-# Find out how many images were loaded
-    m = images.shape[0]
-
-    # Invert and normalize images
-    images = (255. - images) / 255.
-
-    # Reshape labels
-    labels = labels.reshape(labels.shape[0], 1)
-
-    # Return values
-    if return_filenames:
-        return images, labels, filenames
-    else:
-        return images, labels
-
-####################################################################################
-
-def get_mini_batches(X, Y, size, seed):
-    np.random.seed(seed)
-    m = X.shape[0]
-    n_batches = int(m / size)
-    batches = []
-    # LOOP OVER FULL BATCHES
-    for i in range(n_batches):
-        cur_x = X[i * size : (i + 1) * size]
-        cur_y = Y[i * size : (i + 1) * size]
-        cur_batch = (cur_x, cur_y)
-        batches.append(cur_batch)
-    # GET LAST BATCH IF EXTRA
-    if (m % size > 0):
-        cur_x = X[n_batches * size :]
-        cur_y = Y[n_batches * size :]
-        cur_batch = (cur_x, cur_y)
-        batches.append(cur_batch)
-
-    return batches
-
-####################################################################################
-
-def random_mini_batches(X, Y, batch_size, seed):
-    np.random.seed(seed)
-    m = X.shape[0]
-    n_batches = int(m / batch_size)
-    batches = []
-
-    # Shuffle
-    idx = np.random.permutation(m)
-    X, Y = X[idx], Y[idx]
-
-    # LOOP OVER FULL BATCHES
-    for i in range(n_batches):
-        cur_x = X[i * batch_size : (i + 1) * batch_size]
-        cur_y = Y[i * batch_size : (i + 1) * batch_size]
-        cur_batch = (cur_x, cur_y)
-        batches.append(cur_batch)
-    # GET LAST BATCH IF EXTRA
-    if (m % size > 0):
-        cur_x = X[n_batches * batch_size :]
-        cur_y = Y[n_batches * batch_size :]
-        cur_batch = (cur_x, cur_y)
-        batches.append(cur_batch)
-
-    return batches
-
-####################################################################################
-
 def get_printable_image(this_image):
     this_image = 255 - this_image * 255
     this_image = misc.toimage(this_image)
@@ -210,7 +113,7 @@ def round(num):
 
 ####################################################################################
 
-def load_dataset_mysql(m=-1, return_filenames=False, im_dir="train", log=False):
+def load_dataset_cnn(m=-1, return_filenames=False, im_dir="train", log=False):
 
     # Define condition for selecting train, dev, test set.
     # For dev, fit_id % 10 == 0
@@ -334,7 +237,7 @@ def print_bad_images(X, predictions, fnames):
 
 ####################################################################################
 
-def load_dataset_all(m=-1, im_dir="train", log=False, im_path="", im_shrink = True):
+def load_dataset_all(m=-1, im_dir="train", log=False, im_path=""):
 
     # Define condition for selecting train, dev, test set.
     # For dev, fit_id % 10 == 0
@@ -350,10 +253,7 @@ def load_dataset_all(m=-1, im_dir="train", log=False, im_path="", im_shrink = Tr
         return 0
 
     # DEFINE IMAGE DIMENSIONS
-    if im_shrink == True:
-        scale = 4
-    else:
-        scale = 16
+    scale = 8
     wpx, hpx = 87 * scale, 59 * scale
 
     # Connect to mysql database
@@ -412,3 +312,24 @@ def load_dataset_all(m=-1, im_dir="train", log=False, im_path="", im_shrink = Tr
     return images, labels, params
 
 ####################################################################################
+
+def load_images_from_scratch():
+    return 0
+####################################################################################
+
+def load_images_from_file():
+    return 0
+####################################################################################
+
+def load_fit_inputs(): 
+    return 0
+####################################################################################
+
+def load_fit_outputs():
+    return 0
+####################################################################################
+
+def make_image_from_numbers(parameters, histogram):
+    return 0
+####################################################################################
+
