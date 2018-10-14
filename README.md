@@ -7,8 +7,6 @@ mathematical fitting. In this repository, I only include the results. To see how
 results were generated, check out another repository of mine 
 [here](https://github.com/bradylowe/Low-Light-PMT-Data-Root-Fit). 
 
-The gaindb.sql file is a backup of the mysql database used.
-
 *Dependencies:*
  - jupyter (for executing python notebooks)
  - pillow, scipy, matplotlib (for images) 
