@@ -28,10 +28,9 @@ results were generated, check out another repository of mine
     * This notebook is the most basic convolution neural net example.
     * Within this notebook, we can load our data, define a convolutional model, train the model, and do a little evaluation. 
     * We can also save models or load models.
- - fit_pmt_conv_hybrid.ipynb
+ - fit_pmt_conv_all_info.ipynb
     * This notebook trains two identical conv nets in parallel and then combines their outputs at the end to make predictions based on both of their opinions.
- - fit_pmt_conv_hybrid_all.ipynb
-    * This notebook is just like the above except it also takes into account all of the input and output parameters of the fitting algorithm as well. 
+    * This notebook also takes into account all of the input and output parameters of the fitting algorithm. 
     * These extra parameters are activated and appended to the activations at the same time the two conv nets are merged.
  - fit_pmt_dense_params.ipynb
     * This notebook doesn't use images at all.
