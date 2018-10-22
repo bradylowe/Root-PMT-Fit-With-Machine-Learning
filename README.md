@@ -82,7 +82,7 @@ results were generated, check out another repository of mine
  - This command should create the gaindb database and populate it with values. (If this is not the case, you must first define the gaindb database on your system and give your user all permissions over the database, described [here](https://dev.mysql.com/doc/refman/8.0/en/creating-database.html)).
 
 ### *images:*
- - This directory houses all the images created for training and testing.
+ - This directory houses the images created for training and testing.
  - The development images have run_id % 10 == 0
  - The testing images have run_id % 10 == 1
  - The training images have run_id % 10 > 1
