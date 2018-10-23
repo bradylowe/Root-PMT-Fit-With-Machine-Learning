@@ -1,8 +1,6 @@
+# Load dependencies
 import numpy as np
-import glob
-from pathlib import Path
 from scipy import misc
-from PIL import Image
 
 ####################################################################################
 # Because we have to invert and normalize our images for our networks to learn
@@ -61,84 +59,86 @@ def get_stats(model, train_x, train_y, test_x = '', test_y = ''):
 
 
 ####################################################################################
-# This function loads all the information available about the labeled Root fits for
-# the purpose of achieving the highest possible accuracy on neural net 
-# classification of Root fits. This includes loading PNG images as well as values
-# from MySQL database gaindb.
+# This function loads all the information available about the labeled Root fits from
+# a local text file called no_sql_params.txt for those that would like to try out 
+# the network but don't want to bother with sql. Images are loaded from the local 
+# "images" directory.
 
-def load_dataset_all(m=-1, im_dir="train", log=False, im_path=""):
-
-    # Define condition for selecting train, dev, test set.
-    # For dev, fit_id % 10 == 0
-    # For test, fit_id % 10 == 1
-    if (im_dir == "train"):
-        im_dir = "MOD(run_id, 10) > 1;"
-    elif (im_dir == "dev"):
-        im_dir = "MOD(run_id, 10) = 0;"
-    elif (im_dir == "test"):
-        im_dir = "MOD(run_id, 10) = 1;"
-    else:
-        print("im_dir entry not valid")
-        return 0
+def load_dataset_no_sql(m=-1, dataset="train"):
 
     # DEFINE IMAGE DIMENSIONS
     scale = 4
     wpx, hpx = 87 * scale, 59 * scale
 
-    # Connect to mysql database
-    import mysql.connector
-    gaindb = mysql.connector.connect(
-        host='localhost', user='brady',
-        password='thesis', database='gaindb'
-    )
-
-    # Query database
-    data = gaindb.cursor()
-    data.execute("SELECT * FROM fit_results WHERE nn_png IS NOT NULL AND label IS NOT NULL AND label<2 AND " + im_dir)
-
-    # Grab pngs from file, create lists
-    images = []
+    # In a loop, grab all the avaiable fit data from the no_sql_params.txt file.
+    # In this file, we will grab filenames of pngs as well as labels for the data. 
+    # We store all the information in lists which must be initialized before looping.
+    linear_plots = []
+    log_plots = []
     labels = []
-    filenames = []
-    params=[]
-    for (fit_id, run_id, fit_engine, fit_low, fit_high, min_pe, max_pe, w_0, ped_0, ped_rms_0, alpha_0, mu_0, sig_0, sig_rms_0, inj_0, real_0, w_min, ped_min, ped_rms_min, alpha_min, mu_min, sig_min, sig_rms_min, inj_min, real_min, w_max, ped_max, ped_rms_max, alpha_max, mu_max, sig_max, sig_rms_max, inj_max, real_max, w_out, ped_out, ped_rms_out, alpha_out, mu_out, sig_out, sig_rms_out, inj_out, real_out, w_out_error, ped_out_error, ped_rms_out_error, alpha_out_error, mu_out_error, sig_out_error, sig_rms_out_error, inj_out_error, real_out_error, chi, gain, gain_error, gain_percent_error, _, filename, label) in data:
-        # Change the filename if log plot
-        if log:
-            filename = filename.replace("log0", "log1")
-        # Append path
-        filename = im_path + filename
-        # Save the filename
-        filenames.append(filename)
-        # Read in image to array
-        cur_png = misc.imread(filename)
-        # Reduce resolution and append to list
-        images.append(misc.imresize(cur_png, (hpx, wpx)))
-        # Append other values to their lists
+    in_params = []
+    out_params = []
+    infile = open("no_sql_params.txt", "r")
+    contents = infile.readlines()
+    # Start the loop index at 1 because first line in the file is empty
+    ii = 1
+    while ii < len(contents):
+        # Grab the run_params and fit_results into vectors
+        run_params = contents[ii].split()
+        fit_results = contents[ii + 1].split()
+        # Check the run_id to see which dataset this run is in
+        run_id = int(run_params[0])
+        # Check which dataset this run falls in. Only load the requested ones
+        # For dev, fit_id % 10 == 0
+        # For test, fit_id % 10 == 1
+        if (dataset == "train" and run_id % 10 < 2):
+            ii += 3
+            continue
+        if (dataset == "dev" and run_id % 10 != 0):
+            ii += 3
+            continue
+        if (dataset == "test" and run_id % 10 != 1):
+            ii += 3
+            continue
+        # Split up into input and output parameters
+        fit_in = [int(run_params[6]), int(run_params[9]), int(run_params[10]), int(run_params[8]), int(run_params[11]), int(run_params[12]), int(fit_results[2]), int(fit_results[3]), int(fit_results[4]), int(fit_results[5]), int(fit_results[6]), float(fit_results[7]), float(fit_results[8]), float(fit_results[9]), float(fit_results[10]), float(fit_results[11]), float(fit_results[12]), float(fit_results[13]), float(fit_results[14]), float(fit_results[15]), float(fit_results[16]), float(fit_results[17]), float(fit_results[18]), float(fit_results[19]), float(fit_results[20]), float(fit_results[21]), float(fit_results[22]), float(fit_results[23]), float(fit_results[24]), float(fit_results[25]), float(fit_results[26]), float(fit_results[27]), float(fit_results[28]), float(fit_results[29]), float(fit_results[30]), float(fit_results[31]), float(fit_results[32]), float(fit_results[33])]
+        fit_out = [float(fit_results[34]), float(fit_results[35]), float(fit_results[36]), float(fit_results[37]), float(fit_results[38]), float(fit_results[40]), float(fit_results[41]), float(fit_results[42]), float(fit_results[43]), float(fit_results[44]), float(fit_results[45]), float(fit_results[46]), float(fit_results[47]), float(fit_results[49]), float(fit_results[50]), float(fit_results[51]), float(fit_results[52]), float(fit_results[53]), float(fit_results[54]), float(fit_results[55])]
+        # Append parameters of this fit to our lists
+        in_params.append(fit_in)
+        out_params.append(fit_out)
+        # Grab label
+        label = int(fit_results[58])
         labels.append(label)
-        # Grab parameters into a list and append it to list
-        param=[fit_engine, fit_low, fit_high, min_pe, max_pe, w_0, ped_0, ped_rms_0, alpha_0, mu_0, sig_0, sig_rms_0, inj_0, real_0, w_min, ped_min, ped_rms_min, alpha_min, mu_min, sig_min, sig_rms_min, inj_min, real_min, w_max, ped_max, ped_rms_max, alpha_max, mu_max, sig_max, sig_rms_max, inj_max, real_max, w_out, ped_out, ped_rms_out, alpha_out, mu_out, sig_out, sig_rms_out, inj_out, real_out, w_out_error, ped_out_error, ped_rms_out_error, alpha_out_error, mu_out_error, sig_out_error, sig_rms_out_error, inj_out_error, real_out_error, chi, gain, gain_error, gain_percent_error]
-        params.append(param)
-
+        # Grab image from filename, append the source dir, and make log filename
+        linear_filename = fit_results[57]
+        linear_filename = 'images/' + linear_filename
+        log_filename = linear_filename.replace("log0", "log1")
+        # Read in image to array, reduce resolution and append
+        cur_png = misc.imread(linear_filename)
+        linear_plots.append(misc.imresize(cur_png, (hpx, wpx)))
+        cur_png = misc.imread(log_filename)
+        log_plots.append(misc.imresize(cur_png, (hpx, wpx)))
+        # Iterate to next fit in list (next 3 lines)
+        ii += 3
         # Exit the loop if we hit the limit
         if m != -1 and len(labels) >= m:
             break
 
     # Convert all gathered info into arrays
-    images = np.asarray(images)
+    linear_plots = np.asarray(linear_plots)
+    log_plots = np.asarray(log_plots)
     labels = np.asarray(labels)
-    params = np.asarray(params)
-
+    in_params = np.asarray(in_params)
+    out_params = np.asarray(out_params)
     # Find out how many images were loaded
-    m = images.shape[0]
-
+    m = linear_plots.shape[0]
     # Invert and normalize images
-    images = (255. - images) / 255.
-
+    linear_plots = (255. - linear_plots) / 255.
+    log_plots = (255. - log_plots) / 255.
     # Reshape labels
     labels = labels.reshape(m, 1)
-
     # Return values
-    return images, labels, params
+    return linear_plots, log_plots, in_params, out_params, labels
 
 
 ####################################################################################
@@ -245,7 +245,7 @@ def load_fit_results(m=-1, dataset="train", max_label=1, using_pngs=True):
             fit_in = [pmt, datarate, pedrate, hv, ll, filtr, fit_engine, fit_low, fit_high, min_pe, max_pe, w_0, ped_0, ped_rms_0, alpha_0, mu_0, sig_0, sig_rms_0, inj_0, real_0, w_min, ped_min, ped_rms_min, alpha_min, mu_min, sig_min, sig_rms_min, inj_min, real_min, w_max, ped_max, ped_rms_max, alpha_max, mu_max, sig_max, sig_rms_max, inj_max, real_max]
             fit_inputs.append(fit_in)
             # Put together list of all outputs from fit algorithm
-            fit_out = [w_out, ped_out, ped_rms_out, alpha_out, mu_out, inj_out, real_out, w_out_error, ped_out_error, ped_rms_out_error, alpha_out_error, mu_out_error, sig_out_error, sig_rms_out_error, inj_out_error, real_out_error, chi, gain, gain_error, gain_percent_error]
+            fit_out = [w_out, ped_out, ped_rms_out, alpha_out, mu_out, sig_rms_out, inj_out, real_out, w_out_error, ped_out_error, ped_rms_out_error, alpha_out_error, mu_out_error, sig_rms_out_error, inj_out_error, real_out_error, chi, gain, gain_error, gain_percent_error]
             fit_outputs.append(fit_out)
             # Just do one
             break

@@ -14,8 +14,8 @@ results were generated, check out another repository of mine
  - IPython (for saving models)
 
 *Quick start:*
- - Simply execute one of the python notebooks like:
-    * jupyter notebook fit_pmt_conv.ipynb
+ - Simply execute the following line of code:
+    * jupyter notebook fit_pmt_conv_no_sql.ipynb
 
 ---
 ---
@@ -24,14 +24,18 @@ results were generated, check out another repository of mine
 ## Summary of files and directories
 
 ### *python notebooks (.ipynb):*
- - fit_pmt_conv.ipynb
+ - fit_pmt_conv_basic.ipynb
     * This notebook is the most basic convolution neural net example.
     * Within this notebook, we can load our data, define a convolutional model, train the model, and do a little evaluation. 
     * We can also save models or load models.
- - fit_pmt_conv_all_info.ipynb
+ - fit_pmt_conv.ipynb
     * This notebook trains two identical conv nets in parallel and then combines their outputs at the end to make predictions based on both of their opinions.
     * This notebook also takes into account all of the input and output parameters of the fitting algorithm. 
     * These extra parameters are activated and appended to the activations at the same time the two conv nets are merged.
+ - fit_pmt_conv_no_sql.ipynb
+    * This notebook is identical to the fit_pmt_conv notebook above except that it uses no sql database.
+    * To replace the database, we must read the info in from the database on a computer with mysql installed and write the info to the no_sql_params.txt file.
+    * The run_params table info is printed in one line followed by the fit_results table params in the next line
  - fit_pmt_dense_params.ipynb
     * This notebook doesn't use images at all.
     * This notebook only uses the inputs and outputs to the fitting algorithm to make predictions.
