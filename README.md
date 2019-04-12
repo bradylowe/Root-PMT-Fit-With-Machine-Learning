@@ -1,6 +1,7 @@
 # Root-PMT-Fit-With-Machine-Learning
 A collection of python code (with MySQL) to classify the outputs of a powerful fitting 
-algorithm as either "good fit" or "bad fit" to the data.
+algorithm as either "good fit" or "bad fit" to the data. This model evaluates the visual
+aspects of the output of the fitting algorithm, a png like the one I look at.
 
 This project gets its dataset by using Cern Root C++ program suite for very rigorous 
 mathematical fitting. In this repository, I only include the results. To see how these 
