@@ -20,8 +20,8 @@ results were generated, check out another repository of mine
 ---
 
 Example good and bad fits 
-![](images/fit_pmt_nn__fitID102_runID249_chi3_log0.png)
-![](images/fit_pmt_nn__fitID126_runID273_chi329_log0.png)
+![](images/fit_pmt_nn__fitID102_runID249_chi3_log1.png)
+![](images/fit_pmt_nn__fitID126_runID273_chi329_log1.png)
 
 ---
 ---
