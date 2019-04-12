@@ -18,6 +18,11 @@ results were generated, check out another repository of mine
     * jupyter notebook fit_pmt_conv_no_sql.ipynb
 
 ---
+
+Example good and bad fits 
+![](fit_pmt_nn__fitID102_runID249_chi3_log0.png)
+![](fit_pmt_nn__fitID126_runID273_chi329_log0.png)
+
 ---
 ---
 
